@@ -21,11 +21,13 @@ python clip.py my_video.mp4 --whisper base     # faster, less accurate
 python clip.py my_video.mp4 --device cuda --compute-type float16   # NVIDIA GPU
 ```
 
+`--crop face` (default) keeps the speaker's face in the vertical frame; `--crop center` disables it.
+If no face is found it falls back to centre crop.
+
 Output goes to `output/<video-name>/` (clips, `transcript.json`, `clips.json`).
 The transcript is cached, so re-runs skip the slow step.
 
 ## Roadmap
 
-- Face-aware crop (follow the speaker) instead of centre crop
 - Caption style presets
 - Small local UI (Streamlit)
