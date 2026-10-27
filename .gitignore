@@ -6,3 +6,5 @@ output/
 *.mp4
 *.mov
 *.mkv
+client_secret*.json
+token.json
