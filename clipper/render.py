@@ -4,20 +4,26 @@ import subprocess
 from pathlib import Path
 
 from .captions import build_ass
+from .framing import face_center
 
 
 def _slug(text):
     return re.sub(r"[^a-z0-9]+", "-", text.lower()).strip("-")[:40] or "clip"
 
 
-def render_clip(video, clip, segments, out_dir, index, captions=True):
+def render_clip(video, clip, segments, out_dir, index, captions=True, crop="face"):
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     start, end = float(clip["start"]), float(clip["end"])
     name = f"{index:02d}-{_slug(clip.get('title', 'clip'))}"
     out_file = out_dir / f"{name}.mp4"
 
-    vf = "crop='min(iw,ih*9/16)':'min(ih,iw*16/9)',scale=1080:1920"
+    frac = face_center(video, start, end) if crop == "face" else None
+    if frac is None:
+        x_expr = "(iw-ow)/2"  # centre crop
+    else:
+        x_expr = f"max(0,min(iw-ow,{frac:.4f}*iw-ow/2))"  # keep the face centred
+    vf = f"crop=w='min(iw,ih*9/16)':h='min(ih,iw*16/9)':x='{x_expr}':y='(ih-oh)/2',scale=1080:1920"
     ass_name = None
     if captions:
         words = [w for s in segments for w in s.words if w.start >= start - 0.05 and w.end <= end + 0.05]

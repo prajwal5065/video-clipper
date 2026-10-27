@@ -25,6 +25,7 @@ def main():
     p.add_argument("--device", default="auto", help="auto/cpu/cuda")
     p.add_argument("--compute-type", default="int8", help="int8 (CPU) or float16 (GPU)")
     p.add_argument("--out", default="output")
+    p.add_argument("--crop", choices=["face", "center"], default="face", help="9:16 crop mode")
     p.add_argument("--no-captions", action="store_true")
     p.add_argument("--dry-run", action="store_true", help="only pick clips, do not render")
     a = p.parse_args()
@@ -58,7 +59,7 @@ def main():
 
     for i, c in enumerate(clips, 1):
         print(f"Rendering clip {i}/{len(clips)}...")
-        f = render_clip(video, c, segments, out_dir, i, captions=not a.no_captions)
+        f = render_clip(video, c, segments, out_dir, i, captions=not a.no_captions, crop=a.crop)
         print(f"  -> {f}")
     print(f"Done. Clips are in {out_dir}")
 
