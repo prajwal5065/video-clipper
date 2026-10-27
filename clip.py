@@ -13,12 +13,13 @@ from dotenv import load_dotenv
 from clipper import transcribe as tr
 from clipper.select import pick_clips
 from clipper.captions import STYLES
+from clipper.download import download, is_url
 from clipper.render import render_clip
 
 
 def main():
     p = argparse.ArgumentParser(description="Turn a long video into short vertical clips.")
-    p.add_argument("video")
+    p.add_argument("video", help="path to a video file, or a link (YouTube etc.)")
     p.add_argument("--clips", type=int, default=5, help="how many clips to make")
     p.add_argument("--min", type=int, default=20, dest="min_len", help="min clip seconds")
     p.add_argument("--max", type=int, default=60, dest="max_len", help="max clip seconds")
@@ -33,7 +34,11 @@ def main():
     a = p.parse_args()
 
     load_dotenv()
-    video = Path(a.video)
+    if is_url(a.video):
+        print("Downloading video...")
+        video = download(a.video, Path(a.out) / "_downloads")
+    else:
+        video = Path(a.video)
     if not video.exists():
         sys.exit(f"File not found: {video}")
 

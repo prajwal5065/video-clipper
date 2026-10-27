@@ -6,6 +6,7 @@ from dotenv import load_dotenv
 
 from clipper import transcribe as tr
 from clipper.captions import STYLES
+from clipper.download import download
 from clipper.render import render_clip
 from clipper.select import pick_clips
 
@@ -25,18 +26,26 @@ with st.sidebar:
     captions = st.checkbox("Burn in captions", value=True)
     style = st.selectbox("Caption style", list(STYLES), disabled=not captions)
 
+link = st.text_input("Paste a video link (YouTube or similar)")
 uploaded = st.file_uploader("Upload a video", type=["mp4", "mov", "mkv", "webm", "m4v"])
 local_path = st.text_input("...or paste a local file path (better for very large videos)")
 
 if st.button("Generate clips", type="primary"):
-    if uploaded:
+    if link.strip():
+        try:
+            with st.spinner("Downloading video..."):
+                src = download(link.strip(), Path("output") / "_downloads")
+        except Exception as e:
+            st.error(f"Download failed: {e}. Update yt-dlp (pip install -U yt-dlp) or upload the file instead.")
+            st.stop()
+    elif uploaded:
         src = Path("output") / "_uploads" / uploaded.name
         src.parent.mkdir(parents=True, exist_ok=True)
         src.write_bytes(uploaded.getbuffer())
     elif local_path.strip():
         src = Path(local_path.strip().strip('"'))
     else:
-        st.error("Upload a video or paste a file path first.")
+        st.error("Paste a link, upload a video, or enter a file path first.")
         st.stop()
     if not src.exists():
         st.error(f"File not found: {src}")
