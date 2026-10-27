@@ -5,6 +5,7 @@ import streamlit as st
 from dotenv import load_dotenv
 
 from clipper import transcribe as tr
+from clipper.captions import STYLES
 from clipper.render import render_clip
 from clipper.select import pick_clips
 
@@ -22,6 +23,7 @@ with st.sidebar:
     compute = st.selectbox("Compute type", ["int8", "float16"], help="int8 for CPU, float16 for NVIDIA GPU")
     crop = st.selectbox("Crop", ["face", "center"])
     captions = st.checkbox("Burn in captions", value=True)
+    style = st.selectbox("Caption style", list(STYLES), disabled=not captions)
 
 uploaded = st.file_uploader("Upload a video", type=["mp4", "mov", "mkv", "webm", "m4v"])
 local_path = st.text_input("...or paste a local file path (better for very large videos)")
@@ -61,7 +63,7 @@ if st.button("Generate clips", type="primary"):
             bar = st.progress(0.0)
             for i, c in enumerate(clips, 1):
                 st.write(f"Rendering clip {i}/{len(clips)}: {c.get('title', '')}")
-                f = render_clip(src, c, segments, out_dir, i, captions=captions, crop=crop)
+                f = render_clip(src, c, segments, out_dir, i, captions=captions, crop=crop, style=style)
                 results.append((c, str(f)))
                 bar.progress(i / len(clips))
             status.update(label="Done", state="complete")

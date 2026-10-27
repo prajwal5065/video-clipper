@@ -11,7 +11,7 @@ def _slug(text):
     return re.sub(r"[^a-z0-9]+", "-", text.lower()).strip("-")[:40] or "clip"
 
 
-def render_clip(video, clip, segments, out_dir, index, captions=True, crop="face"):
+def render_clip(video, clip, segments, out_dir, index, captions=True, crop="face", style="classic"):
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     start, end = float(clip["start"]), float(clip["end"])
@@ -29,7 +29,7 @@ def render_clip(video, clip, segments, out_dir, index, captions=True, crop="face
         words = [w for s in segments for w in s.words if w.start >= start - 0.05 and w.end <= end + 0.05]
         if words:
             ass_name = f"{name}.ass"
-            build_ass(words, start, out_dir / ass_name)
+            build_ass(words, start, out_dir / ass_name, style)
             vf += f",ass={ass_name}"
 
     cmd = [
