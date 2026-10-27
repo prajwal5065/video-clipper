@@ -20,10 +20,13 @@ Browser UI (easiest):
 streamlit run app.py
 ```
 
-Or the command line:
+Paste a link in the page, upload a file, or enter a local path.
+
+Or the command line (file path or link):
 
 ```
 python clip.py my_video.mp4 --clips 5
+python clip.py "https://www.youtube.com/watch?v=..." --clips 5
 python clip.py my_video.mp4 --dry-run          # only show the chosen moments
 python clip.py my_video.mp4 --whisper base     # faster, less accurate
 python clip.py my_video.mp4 --device cuda --compute-type float16   # NVIDIA GPU
@@ -40,3 +43,7 @@ The transcript is cached, so re-runs skip the slow step.
 ## Roadmap
 
 - Caption style presets
+
+## Troubleshooting
+
+- Link download fails: run `pip install -U yt-dlp` (YouTube changes often). If it still fails, download the file yourself and upload it.
