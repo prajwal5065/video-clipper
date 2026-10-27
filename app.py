@@ -7,6 +7,8 @@ from dotenv import load_dotenv
 from clipper import transcribe as tr
 from clipper.captions import STYLES
 from clipper.download import download
+from clipper.metadata import generate_metadata, transcript_for
+from clipper.youtube import upload
 from clipper.render import render_clip
 from clipper.select import pick_clips
 
@@ -68,6 +70,8 @@ if st.button("Generate clips", type="primary"):
                 st.stop()
             st.write("Asking Gemini for the best moments...")
             clips = pick_clips(segments, n_clips, min_len, max_len)
+            for c in clips:
+                c["transcript"] = transcript_for(segments, c["start"], c["end"])
             results = []
             bar = st.progress(0.0)
             for i, c in enumerate(clips, 1):
@@ -95,3 +99,21 @@ if results:
                 st.caption(c["reason"])
             st.download_button("Download", Path(path).read_bytes(), file_name=Path(path).name,
                                mime="video/mp4", key=f"dl{idx}")
+            if st.button("Upload to YouTube", key=f"up{idx}"):
+                try:
+                    with st.spinner("Writing title, description and tags, then uploading..."):
+                        c["meta"] = c.get("meta") or generate_metadata(c.get("transcript", ""))
+                        c["yt_url"] = upload(path, c["meta"])
+                except FileNotFoundError as e:
+                    st.error(str(e))
+                except KeyError as e:
+                    st.error("GEMINI_API_KEY is missing in .env." if "GEMINI" in str(e) else f"Missing: {e}")
+                except Exception as e:
+                    st.error(f"Upload failed: {e}")
+            if c.get("yt_url"):
+                st.success(f"Uploaded: {c['yt_url']}")
+            if c.get("meta"):
+                with st.expander("Title, description and tags"):
+                    st.write(c["meta"]["title"])
+                    st.text(c["meta"]["description"])
+                    st.caption(", ".join(c["meta"]["tags"]))

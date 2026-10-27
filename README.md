@@ -47,3 +47,21 @@ The transcript is cached, so re-runs skip the slow step.
 ## Troubleshooting
 
 - Link download fails: run `pip install -U yt-dlp` (YouTube changes often). If it still fails, download the file yourself and upload it.
+
+## YouTube upload setup (one time)
+
+An API key cannot upload videos; YouTube needs a Google sign-in (OAuth).
+
+1. Go to https://console.cloud.google.com and create a project.
+2. APIs & Services -> Library -> enable **YouTube Data API v3**.
+3. APIs & Services -> OAuth consent screen: choose External, fill the basics, and add your own Google account under **Test users**.
+4. Credentials -> Create credentials -> **OAuth client ID** -> Application type **Desktop app**. Download the JSON and save it as `client_secret.json` in this folder.
+5. Click **Upload to YouTube** under any clip. A browser window opens once to sign in; after that it is remembered (`token.json`).
+
+What the button does: writes the title, description, hashtags and tags with Gemini, sets the settings from `.env`, and uploads.
+
+Notes:
+- New Google Cloud projects are forced to **private** uploads until YouTube audits them. Publish the video from YouTube Studio, or apply for the audit.
+- "Made for kids" is set from `YT_MADE_FOR_KIDS`. Age restriction cannot be set through this upload API as far as I know; set it in YouTube Studio if needed.
+- Keywords come from the clip's own transcript. There is no live trend data.
+- Never commit `client_secret.json`, `token.json` or `.env` (they are in `.gitignore`).
