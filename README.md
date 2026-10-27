@@ -14,6 +14,14 @@ Pipeline: **faster-whisper** (transcript + word timestamps) -> **Gemini** (picks
 
 ## Use
 
+Browser UI (easiest):
+
+```
+streamlit run app.py
+```
+
+Or the command line:
+
 ```
 python clip.py my_video.mp4 --clips 5
 python clip.py my_video.mp4 --dry-run          # only show the chosen moments
@@ -30,4 +38,3 @@ The transcript is cached, so re-runs skip the slow step.
 ## Roadmap
 
 - Caption style presets
-- Small local UI (Streamlit)
