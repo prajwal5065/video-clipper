@@ -7,6 +7,9 @@ def face_center(video, start, end, samples=12):
     or None if no face is found reliably (caller falls back to centre crop)."""
     import cv2  # lazy import
 
+    if not hasattr(cv2, "CascadeClassifier"):  # e.g. OpenCV 5 dropped it: fall back to centre crop
+        return None
+
     cap = cv2.VideoCapture(str(video))
     if not cap.isOpened():
         return None
