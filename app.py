@@ -1,4 +1,5 @@
 """Local web UI for video-clipper.  Run:  streamlit run app.py"""
+from datetime import date, datetime, time as dtime, timedelta
 from pathlib import Path
 
 import streamlit as st
@@ -90,6 +91,32 @@ if st.button("Generate clips", type="primary"):
 results = st.session_state.get("results", [])
 if results:
     st.subheader("Your clips")
+    with st.expander("Schedule all clips on YouTube"):
+        st.caption("Uploads every clip now and tells YouTube when to publish each one. "
+                   "Times use your computer's time zone. Check Studio afterwards: scheduled videos show a date.")
+        sc1, sc2, sc3 = st.columns(3)
+        first_day = sc1.date_input("First clip date", value=date.today() + timedelta(days=1))
+        at_time = sc2.time_input("Time of day", value=dtime(18, 0))
+        gap = sc3.number_input("Days between clips", 1, 30, 1)
+        if st.button("Upload and schedule all", key="sched_all"):
+            tz = datetime.now().astimezone().tzinfo
+            slots = [datetime.combine(first_day + timedelta(days=i * int(gap)), at_time).replace(tzinfo=tz)
+                     for i in range(len(results))]
+            if slots[0] <= datetime.now(tz) + timedelta(minutes=10):
+                st.error("The first time must be at least 10 minutes in the future.")
+            else:
+                try:
+                    with st.status("Uploading and scheduling...", expanded=True) as sstatus:
+                        for (sc, spath), when in zip(results, slots):
+                            st.write(f"{sc.get('title', 'Clip')} -> {when:%d %b %Y, %H:%M}")
+                            sc["meta"] = sc.get("meta") or generate_metadata(sc.get("transcript", ""))
+                            sc["yt_url"] = upload(spath, sc["meta"], publish_at=when)
+                            sc["scheduled"] = when
+                        sstatus.update(label="All clips uploaded and scheduled", state="complete")
+                except FileNotFoundError as e:
+                    st.error(str(e))
+                except Exception as e:
+                    st.error(f"Scheduling failed: {e}")
     cols = st.columns(3)
     for idx, (c, path) in enumerate(results):
         with cols[idx % 3]:
@@ -111,7 +138,8 @@ if results:
                 except Exception as e:
                     st.error(f"Upload failed: {e}")
             if c.get("yt_url"):
-                st.success(f"Uploaded: {c['yt_url']}")
+                when = c.get("scheduled")
+                st.success(f"Uploaded: {c['yt_url']}" + (f" (scheduled {when:%d %b, %H:%M})" if when else ""))
             if c.get("meta"):
                 with st.expander("Title, description and tags"):
                     st.write(c["meta"]["title"])

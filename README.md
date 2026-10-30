@@ -65,3 +65,7 @@ Notes:
 - "Made for kids" is set from `YT_MADE_FOR_KIDS`. Age restriction cannot be set through this upload API as far as I know; set it in YouTube Studio if needed.
 - Keywords come from the clip's own transcript. There is no live trend data.
 - Never commit `client_secret.json`, `token.json` or `.env` (they are in `.gitignore`).
+
+## Scheduling
+
+Open **Schedule all clips on YouTube**, pick the first date, time and gap in days, and click the button. Each clip is uploaded now and YouTube publishes it at its slot. Check YouTube Studio afterwards: if the videos show a scheduled date, it worked. If they stay plain private, YouTube's API lock is blocking it; schedule them by hand in Studio instead.
