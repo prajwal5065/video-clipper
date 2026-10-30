@@ -1,5 +1,6 @@
 """Upload a clip to YouTube (Data API v3, OAuth)."""
 import os
+from datetime import timezone
 from pathlib import Path
 
 SCOPES = ["https://www.googleapis.com/auth/youtube.upload"]
@@ -9,8 +10,8 @@ def _env_bool(name, default):
     return os.environ.get(name, str(default)).strip().lower() in ("1", "true", "yes")
 
 
-def build_body(meta, privacy=None, made_for_kids=None, category=None):
-    return {
+def build_body(meta, privacy=None, made_for_kids=None, category=None, publish_at=None):
+    body = {
         "snippet": {
             "title": meta["title"],
             "description": meta["description"],
@@ -24,6 +25,11 @@ def build_body(meta, privacy=None, made_for_kids=None, category=None):
             "embeddable": True,
         },
     }
+    if publish_at is not None:
+        # scheduled publishing: video is uploaded private and YouTube flips it public at publishAt
+        body["status"]["privacyStatus"] = "private"
+        body["status"]["publishAt"] = publish_at.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    return body
 
 
 def _service():
@@ -50,11 +56,11 @@ def _service():
     return build("youtube", "v3", credentials=creds)
 
 
-def upload(video_path, meta, privacy=None, made_for_kids=None, category=None):
+def upload(video_path, meta, privacy=None, made_for_kids=None, category=None, publish_at=None):
     """Upload and return the video URL."""
     from googleapiclient.http import MediaFileUpload
 
-    body = build_body(meta, privacy, made_for_kids, category)
+    body = build_body(meta, privacy, made_for_kids, category, publish_at)
     media = MediaFileUpload(str(video_path), mimetype="video/mp4", resumable=True, chunksize=-1)
     req = _service().videos().insert(
         part="snippet,status", body=body, media_body=media, notifySubscribers=False)
