@@ -69,3 +69,12 @@ Notes:
 ## Scheduling
 
 Open **Schedule all clips on YouTube**, pick the first date, time and gap in days, and click the button. Each clip is uploaded now and YouTube publishes it at its slot. Check YouTube Studio afterwards: if the videos show a scheduled date, it worked. If they stay plain private, YouTube's API lock is blocking it; schedule them by hand in Studio instead.
+
+## Multiple YouTube accounts
+
+Set `YT_ACCOUNTS=main,second` in `.env` (any names, comma separated; keep `main` first). Pick the account in the sidebar; every upload and schedule goes to it.
+
+- The first upload to each account opens a Google sign-in. Choose the right Google account (and channel) at that point.
+- Every Google account you use must be added under **Test users** on the OAuth consent screen.
+- "Forget sign-in for this account" in the sidebar deletes that account's saved login (use it to switch to a different channel or if sign-in expires).
+- All accounts share the same Google Cloud project, so they share its daily API quota.

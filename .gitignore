@@ -8,3 +8,4 @@ output/
 *.mkv
 client_secret*.json
 token.json
+token_*.json
