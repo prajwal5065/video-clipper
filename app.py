@@ -1,4 +1,5 @@
 """Local web UI for video-clipper.  Run:  streamlit run app.py"""
+import os
 from datetime import date, datetime, time as dtime, timedelta
 from pathlib import Path
 
@@ -9,7 +10,7 @@ from clipper import transcribe as tr
 from clipper.captions import STYLES
 from clipper.download import download
 from clipper.metadata import generate_metadata, transcript_for
-from clipper.youtube import upload
+from clipper.youtube import accounts, forget_account, upload
 from clipper.render import render_clip
 from clipper.select import pick_clips
 
@@ -18,6 +19,7 @@ st.set_page_config(page_title="Video Clipper", layout="wide")
 st.title("Video Clipper")
 st.caption("Long video in, short vertical captioned clips out. Everything runs on your computer.")
 
+yt_accounts = accounts()
 with st.sidebar:
     st.header("Settings")
     n_clips = st.slider("Number of clips", 1, 10, 5)
@@ -28,6 +30,11 @@ with st.sidebar:
     crop = st.selectbox("Crop", ["face", "center"])
     captions = st.checkbox("Burn in captions", value=True)
     style = st.selectbox("Caption style", list(STYLES), disabled=not captions)
+    st.divider()
+    yt_account = st.selectbox("YouTube account to upload to", yt_accounts)
+    if st.button("Forget sign-in for this account"):
+        forget_account(yt_account)
+        st.success(f"Signed out '{yt_account}'. Next upload asks you to sign in again.")
 
 link = st.text_input("Paste a video link (YouTube or similar)")
 uploaded = st.file_uploader("Upload a video", type=["mp4", "mov", "mkv", "webm", "m4v"])
@@ -110,7 +117,8 @@ if results:
                         for (sc, spath), when in zip(results, slots):
                             st.write(f"{sc.get('title', 'Clip')} -> {when:%d %b %Y, %H:%M}")
                             sc["meta"] = sc.get("meta") or generate_metadata(sc.get("transcript", ""))
-                            sc["yt_url"] = upload(spath, sc["meta"], publish_at=when)
+                            sc["yt_url"] = upload(spath, sc["meta"], publish_at=when, account=yt_account)
+                            sc["yt_account"] = yt_account
                             sc["scheduled"] = when
                         sstatus.update(label="All clips uploaded and scheduled", state="complete")
                 except FileNotFoundError as e:
@@ -130,7 +138,8 @@ if results:
                 try:
                     with st.spinner("Writing title, description and tags, then uploading..."):
                         c["meta"] = c.get("meta") or generate_metadata(c.get("transcript", ""))
-                        c["yt_url"] = upload(path, c["meta"])
+                        c["yt_url"] = upload(path, c["meta"], account=yt_account)
+                        c["yt_account"] = yt_account
                 except FileNotFoundError as e:
                     st.error(str(e))
                 except KeyError as e:
@@ -139,7 +148,7 @@ if results:
                     st.error(f"Upload failed: {e}")
             if c.get("yt_url"):
                 when = c.get("scheduled")
-                st.success(f"Uploaded: {c['yt_url']}" + (f" (scheduled {when:%d %b, %H:%M})" if when else ""))
+                st.success(f"Uploaded to '{c.get('yt_account', 'main')}': {c['yt_url']}" + (f" (scheduled {when:%d %b, %H:%M})" if when else ""))
             if c.get("meta"):
                 with st.expander("Title, description and tags"):
                     st.write(c["meta"]["title"])
