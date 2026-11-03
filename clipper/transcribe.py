@@ -39,19 +39,30 @@ def _wav_seconds(path):
         return w.getnframes() / w.getframerate()
 
 
-def transcribe(video_path, model_size="small", device="auto", compute_type="int8", chunk_seconds=600):
+def transcribe(video_path, model_size="small", device="auto", compute_type="int8", chunk_seconds=600,
+               on_progress=None):
+    """on_progress(done_seconds, total_seconds) is called as audio gets transcribed."""
     from faster_whisper import WhisperModel  # imported lazily: heavy
 
     model = WhisperModel(model_size, device=device, compute_type=compute_type)
     segments, offset = [], 0.0
     with tempfile.TemporaryDirectory() as tmp:
-        for chunk in _split_audio(video_path, tmp, chunk_seconds):
+        chunks = _split_audio(video_path, tmp, chunk_seconds)
+        durations = [_wav_seconds(c) for c in chunks]
+        total = sum(durations)
+        if on_progress:
+            on_progress(0.0, total)
+        for chunk, dur in zip(chunks, durations):
             raw, _info = model.transcribe(str(chunk), word_timestamps=True, vad_filter=True)
             for s in raw:
                 words = [Word(w.start + offset, w.end + offset, w.word.strip())
                          for w in (s.words or []) if w.word.strip()]
                 segments.append(Segment(s.start + offset, s.end + offset, s.text.strip(), words))
-            offset += _wav_seconds(chunk)
+                if on_progress:
+                    on_progress(min(offset + s.end, total), total)
+            offset += dur
+            if on_progress:
+                on_progress(min(offset, total), total)
             Path(chunk).unlink(missing_ok=True)
             gc.collect()
     return segments

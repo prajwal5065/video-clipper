@@ -11,7 +11,9 @@ def _slug(text):
     return re.sub(r"[^a-z0-9]+", "-", text.lower()).strip("-")[:40] or "clip"
 
 
-def render_clip(video, clip, segments, out_dir, index, captions=True, crop="face", style="classic"):
+def render_clip(video, clip, segments, out_dir, index, captions=True, crop="face", style="classic",
+                on_progress=None):
+    """on_progress(fraction 0..1) is called while FFmpeg encodes this clip."""
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     start, end = float(clip["start"]), float(clip["end"])
@@ -33,7 +35,7 @@ def render_clip(video, clip, segments, out_dir, index, captions=True, crop="face
             vf += f",ass={ass_name}"
 
     cmd = [
-        "ffmpeg", "-y", "-loglevel", "error",
+        "ffmpeg", "-y", "-loglevel", "error", "-progress", "pipe:1", "-nostats",
         "-ss", f"{start:.3f}", "-i", str(Path(video).resolve()),
         "-t", f"{end - start:.3f}",
         "-vf", vf,
@@ -41,7 +43,22 @@ def render_clip(video, clip, segments, out_dir, index, captions=True, crop="face
         "-c:a", "aac", "-b:a", "160k", "-movflags", "+faststart",
         out_file.name,
     ]
-    subprocess.run(cmd, cwd=out_dir, check=True)  # cwd lets the ass= path stay simple
+    duration = end - start
+    proc = subprocess.Popen(cmd, cwd=out_dir, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+    log = []  # cwd above lets the ass= path stay simple
+    for line in proc.stdout:
+        line = line.strip()
+        if line.startswith(("out_time_us=", "out_time_ms=")):
+            try:
+                seconds = int(line.split("=", 1)[1]) / 1_000_000
+            except ValueError:
+                continue
+            if on_progress and duration > 0:
+                on_progress(max(0.0, min(seconds / duration, 1.0)))
+        elif line and not re.match(r"^\w+=", line):
+            log.append(line)
+    if proc.wait() != 0:
+        raise RuntimeError("FFmpeg failed: " + " | ".join(log[-5:]))
     if ass_name:
         (out_dir / ass_name).unlink(missing_ok=True)
     return out_file
