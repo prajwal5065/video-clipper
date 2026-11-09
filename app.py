@@ -47,7 +47,14 @@ with st.sidebar:
     whisper = st.selectbox("Whisper model", ["tiny", "base", "small", "medium", "large-v3"], index=2)
     device = st.selectbox("Device", ["auto", "cpu", "cuda"])
     compute = st.selectbox("Compute type", ["int8", "float16"], help="int8 for CPU, float16 for NVIDIA GPU")
-    crop = st.selectbox("Crop", ["face", "center"])
+    crop_labels = {
+        "Crop: follow the face": "face",
+        "Crop: center": "center",
+        "Full frame + blurred background": "fit",
+        "Full frame + black bars": "fit-black",
+    }
+    crop = crop_labels[st.selectbox("Framing", list(crop_labels), help="Crop fills the screen but cuts off the sides. "
+                                    "Full frame keeps everything and fills the space above and below.")]
     captions = st.checkbox("Burn in captions", value=True)
     style = st.selectbox("Caption style", list(STYLES), disabled=not captions)
     st.divider()

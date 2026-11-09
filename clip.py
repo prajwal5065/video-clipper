@@ -27,7 +27,8 @@ def main():
     p.add_argument("--device", default="auto", help="auto/cpu/cuda")
     p.add_argument("--compute-type", default="int8", help="int8 (CPU) or float16 (GPU)")
     p.add_argument("--out", default="output")
-    p.add_argument("--crop", choices=["face", "center"], default="face", help="9:16 crop mode")
+    p.add_argument("--crop", choices=["face", "center", "fit", "fit-black"], default="face",
+                   help="face/center = crop to 9:16; fit = whole frame on a blurred background; fit-black = whole frame with black bars")
     p.add_argument("--style", choices=list(STYLES), default="classic", help="caption style")
     p.add_argument("--no-captions", action="store_true")
     p.add_argument("--dry-run", action="store_true", help="only pick clips, do not render")

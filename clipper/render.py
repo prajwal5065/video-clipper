@@ -1,4 +1,4 @@
-"""Cut a segment, crop to 9:16, burn captions, encode with FFmpeg."""
+"""Cut a segment, frame it as 9:16, burn captions, encode with FFmpeg."""
 import re
 import subprocess
 from pathlib import Path
@@ -11,6 +11,29 @@ def _slug(text):
     return re.sub(r"[^a-z0-9]+", "-", text.lower()).strip("-")[:40] or "clip"
 
 
+FRAMING_MODES = ("face", "center", "fit", "fit-black")
+
+
+def _framing_filter(mode, face_frac):
+    """FFmpeg filter that turns any video into 1080x1920.
+    face / center: crop the middle (or the face) of the frame  -> fills the screen, loses the sides.
+    fit:           whole frame kept, blurred copy of the video fills the empty space.
+    fit-black:     whole frame kept, black bars above and below."""
+    if mode == "fit":
+        return ("split=2[a][b];"
+                "[a]scale=270:480:force_original_aspect_ratio=increase,crop=270:480,"
+                "boxblur=10:3,scale=1080:1920[bg];"
+                "[b]scale=1080:1920:force_original_aspect_ratio=decrease[fg];"
+                "[bg][fg]overlay=(W-w)/2:(H-h)/2")
+    if mode == "fit-black":
+        return "scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2:black"
+    if face_frac is None:
+        x_expr = "(iw-ow)/2"  # centre crop
+    else:
+        x_expr = f"max(0,min(iw-ow,{face_frac:.4f}*iw-ow/2))"  # keep the face centred
+    return f"crop=w='min(iw,ih*9/16)':h='min(ih,iw*16/9)':x='{x_expr}':y='(ih-oh)/2',scale=1080:1920"
+
+
 def render_clip(video, clip, segments, out_dir, index, captions=True, crop="face", style="classic",
                 on_progress=None):
     """on_progress(fraction 0..1) is called while FFmpeg encodes this clip."""
@@ -21,11 +44,7 @@ def render_clip(video, clip, segments, out_dir, index, captions=True, crop="face
     out_file = out_dir / f"{name}.mp4"
 
     frac = face_center(video, start, end) if crop == "face" else None
-    if frac is None:
-        x_expr = "(iw-ow)/2"  # centre crop
-    else:
-        x_expr = f"max(0,min(iw-ow,{frac:.4f}*iw-ow/2))"  # keep the face centred
-    vf = f"crop=w='min(iw,ih*9/16)':h='min(ih,iw*16/9)':x='{x_expr}':y='(ih-oh)/2',scale=1080:1920"
+    vf = _framing_filter(crop, frac)
     ass_name = None
     if captions:
         words = [w for s in segments for w in s.words if w.start >= start - 0.05 and w.end <= end + 0.05]
