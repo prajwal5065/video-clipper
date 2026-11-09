@@ -32,8 +32,7 @@ python clip.py my_video.mp4 --whisper base     # faster, less accurate
 python clip.py my_video.mp4 --device cuda --compute-type float16   # NVIDIA GPU
 ```
 
-`--crop face` (default) keeps the speaker's face in the vertical frame; `--crop center` disables it.
-If no face is found it falls back to centre crop.
+Framing (`--crop`): `face` (default) crops and keeps the speaker's face in the frame, falling back to centre if no face is found; `center` crops the middle; `fit` keeps the whole original frame on a blurred background; `fit-black` keeps the whole frame with black bars. In the UI this is the **Framing** dropdown.
 
 Caption styles: `--style classic|hormozi|mrbeast|minimal` (or pick one in the UI).
 
