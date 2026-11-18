@@ -12,7 +12,7 @@ from clipper.captions import STYLES
 from clipper.download import download
 from clipper.metadata import generate_metadata, transcript_for
 from clipper.youtube import accounts, forget_account, upload
-from clipper.render import render_clip
+from clipper.render import clip_words, render_clip, video_duration
 from clipper.select import pick_clips
 
 load_dotenv()
@@ -39,6 +39,83 @@ def _mmss(seconds):
     return f"{int(seconds) // 60}:{int(seconds) % 60:02d}"
 
 
+FRAMING_LABELS = {
+    "Crop: follow the face": "face",
+    "Crop: center": "center",
+    "Full frame + blurred background": "fit",
+    "Full frame + black bars": "fit-black",
+}
+
+
+def edit_panel(idx, c, job):
+    """Trim, re-frame, restyle and fix the captions of one clip, with a fast preview."""
+    segments, src, out_dir = job["segments"], job["src"], job["out_dir"]
+    limit = float(job["duration"]) if job.get("duration") else float(c["end"]) + 120
+    e1, e2 = st.columns(2)
+    start = e1.number_input("Start (seconds)", 0.0, limit, float(c["start"]), step=0.5, format="%.1f", key=f"st{idx}")
+    end = e2.number_input("End (seconds)", 0.0, limit, float(c["end"]), step=0.5, format="%.1f", key=f"en{idx}")
+    st.caption(f"Clip length: {end - start:.1f}s")
+    values = list(FRAMING_LABELS.values())
+    f_label = st.selectbox("Framing", list(FRAMING_LABELS), index=values.index(c.get("crop", "face")), key=f"fr{idx}")
+    cap_on = st.checkbox("Captions", value=c.get("captions", True), key=f"cp{idx}")
+    sty = st.selectbox("Caption style", list(STYLES), index=list(STYLES).index(c.get("style", "classic")),
+                       disabled=not cap_on, key=f"sy{idx}")
+    base_words = clip_words(segments, c["start"], c["end"])
+    base_text = " ".join(w.text for w in base_words)
+    text = st.text_area("Caption text (fix spelling or names; keep the same number of words)", base_text,
+                        key=f"tx{idx}-{c['start']}-{c['end']}", height=110, disabled=not cap_on)
+    if c.get("yt_url"):
+        st.caption("This clip is already uploaded. Saving changes only the local file, not the YouTube video.")
+
+    def check():
+        """Returns (ok, replacement words or None)."""
+        if end - start < 3 or end - start > 180:
+            st.error("The clip must be between 3 and 180 seconds long (end must be after start).")
+            return False, None
+        if cap_on and text.strip() != base_text.strip():
+            if (start, end) != (float(c["start"]), float(c["end"])):
+                st.warning("Save the new start/end first, then fix the captions.")
+                return False, None
+            parts = text.split()
+            if len(parts) != len(base_words):
+                st.error(f"Keep the same number of words: the clip has {len(base_words)}, you wrote {len(parts)}.")
+                return False, None
+            return True, [tr.Word(w.start, w.end, part) for w, part in zip(base_words, parts)]
+        return True, None
+
+    b1, b2 = st.columns(2)
+    do_preview = b1.button("Preview (fast)", key=f"pv{idx}")
+    do_save = b2.button("Save final", key=f"sv{idx}", type="primary")
+    if do_preview or do_save:
+        ok, words = check()
+        if ok:
+            bar = st.progress(0.0)
+            try:
+                new = {**c, "start": start, "end": end}
+                out = render_clip(src, new, segments, out_dir, idx + 1, captions=cap_on,
+                                  crop=FRAMING_LABELS[f_label], style=sty, words=words,
+                                  out_name=f"preview-{idx + 1:02d}.mp4" if do_preview else None,
+                                  preview=do_preview, on_progress=bar.progress)
+            except Exception as e:
+                bar.empty()
+                st.error(f"Rendering failed: {e}")
+            else:
+                bar.empty()
+                if do_preview:
+                    c["preview"] = str(out)
+                else:
+                    c.update(start=start, end=end, crop=FRAMING_LABELS[f_label], style=sty, captions=cap_on)
+                    c["transcript"] = transcript_for(segments, start, end)
+                    if "yt_url" not in c:
+                        c.pop("meta", None)  # title/description are rewritten for the new cut
+                    c.pop("preview", None)
+                    st.session_state["flash"] = f"Clip {idx + 1} saved."
+                    st.rerun()
+    if c.get("preview"):
+        st.video(c["preview"])
+        st.caption("Low-quality preview, not saved yet. Click Save final to keep it.")
+
+
 yt_accounts = accounts()
 with st.sidebar:
     st.header("Settings")
@@ -47,14 +124,8 @@ with st.sidebar:
     whisper = st.selectbox("Whisper model", ["tiny", "base", "small", "medium", "large-v3"], index=2)
     device = st.selectbox("Device", ["auto", "cpu", "cuda"])
     compute = st.selectbox("Compute type", ["int8", "float16"], help="int8 for CPU, float16 for NVIDIA GPU")
-    crop_labels = {
-        "Crop: follow the face": "face",
-        "Crop: center": "center",
-        "Full frame + blurred background": "fit",
-        "Full frame + black bars": "fit-black",
-    }
-    crop = crop_labels[st.selectbox("Framing", list(crop_labels), help="Crop fills the screen but cuts off the sides. "
-                                    "Full frame keeps everything and fills the space above and below.")]
+    crop = FRAMING_LABELS[st.selectbox("Framing", list(FRAMING_LABELS), help="Crop fills the screen but cuts off the sides. "
+                                       "Full frame keeps everything and fills the space above and below.")]
     captions = st.checkbox("Burn in captions", value=True)
     style = st.selectbox("Caption style", list(STYLES), disabled=not captions)
     st.divider()
@@ -118,11 +189,14 @@ if st.button("Generate clips", type="primary"):
             def on_clip(f, i=i, title=c.get("title", "")):
                 tracker.set(0.68 + 0.32 * ((i - 1 + f) / len(clips)), f"Rendering clip {i} of {len(clips)}: {title}")
             on_clip(0.0)
+            c["crop"], c["style"], c["captions"] = crop, style, captions
             f = render_clip(src, c, segments, out_dir, i, captions=captions, crop=crop, style=style,
                             on_progress=on_clip)
             results.append((c, str(f)))
         tracker.set(1.0, f"Done: {len(results)} clips ready")
         st.session_state["results"] = results
+        st.session_state["job"] = {"src": str(src), "segments": segments, "out_dir": str(out_dir),
+                                   "duration": video_duration(src)}
     except KeyError as e:
         if "GEMINI_API_KEY" in str(e):
             st.error("GEMINI_API_KEY is missing. Add it to your .env file and restart.")
@@ -132,6 +206,8 @@ if st.button("Generate clips", type="primary"):
 results = st.session_state.get("results", [])
 if results:
     st.subheader("Your clips")
+    if st.session_state.get("flash"):
+        st.success(st.session_state.pop("flash"))
     with st.expander("Schedule all clips on YouTube"):
         st.caption("Uploads every clip now and tells YouTube when to publish each one. "
                    "Times use your computer's time zone. Check Studio afterwards: scheduled videos show a date.")
@@ -166,6 +242,9 @@ if results:
             st.markdown(f"**{c.get('title', 'Clip')}**  \nscore {c.get('score', '?')} · {c['start']:.0f}s-{c['end']:.0f}s")
             if c.get("reason"):
                 st.caption(c["reason"])
+            if st.session_state.get("job"):
+                with st.expander("Edit this clip"):
+                    edit_panel(idx, c, st.session_state["job"])
             st.download_button("Download", Path(path).read_bytes(), file_name=Path(path).name,
                                mime="video/mp4", key=f"dl{idx}")
             if st.button("Upload to YouTube", key=f"up{idx}"):

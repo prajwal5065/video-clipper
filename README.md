@@ -77,3 +77,7 @@ Set `YT_ACCOUNTS=main,second` in `.env` (any names, comma separated; keep `main`
 - Every Google account you use must be added under **Test users** on the OAuth consent screen.
 - "Forget sign-in for this account" in the sidebar deletes that account's saved login (use it to switch to a different channel or if sign-in expires).
 - All accounts share the same Google Cloud project, so they share its daily API quota.
+
+## Editing a clip
+
+Under each clip, open **Edit this clip** to change the start/end time, framing, caption style, or fix the caption text (same number of words, so the timing still matches). **Preview (fast)** makes a quick low-resolution version to check; **Save final** re-renders the clip at full quality and replaces it. If you saved a new cut before uploading, the YouTube title and description are written again for it.
