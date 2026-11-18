@@ -14,6 +14,22 @@ def _slug(text):
 FRAMING_MODES = ("face", "center", "fit", "fit-black")
 
 
+def clip_words(segments, start, end):
+    """Words that fall inside [start, end] (absolute video time)."""
+    return [w for s in segments for w in s.words if w.start >= start - 0.05 and w.end <= end + 0.05]
+
+
+def video_duration(path):
+    """Length of a video in seconds (None if FFprobe cannot read it)."""
+    try:
+        out = subprocess.run(
+            ["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "default=nw=1:nk=1", str(path)],
+            capture_output=True, text=True, check=True).stdout.strip()
+        return float(out)
+    except Exception:
+        return None
+
+
 def _framing_filter(mode, face_frac):
     """FFmpeg filter that turns any video into 1080x1920.
     face / center: crop the middle (or the face) of the frame  -> fills the screen, loses the sides.
@@ -35,31 +51,37 @@ def _framing_filter(mode, face_frac):
 
 
 def render_clip(video, clip, segments, out_dir, index, captions=True, crop="face", style="classic",
-                on_progress=None):
-    """on_progress(fraction 0..1) is called while FFmpeg encodes this clip."""
+                on_progress=None, words=None, out_name=None, preview=False):
+    """on_progress(fraction 0..1) is called while FFmpeg encodes this clip.
+    words:    optional replacement caption words (absolute times), e.g. after the user fixed spelling.
+    out_name: output file name (default: <index>-<title>.mp4).
+    preview:  fast low-resolution render (540x960) for checking an edit before saving."""
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     start, end = float(clip["start"]), float(clip["end"])
     name = f"{index:02d}-{_slug(clip.get('title', 'clip'))}"
-    out_file = out_dir / f"{name}.mp4"
+    out_file = out_dir / (out_name or f"{name}.mp4")
 
     frac = face_center(video, start, end) if crop == "face" else None
     vf = _framing_filter(crop, frac)
     ass_name = None
     if captions:
-        words = [w for s in segments for w in s.words if w.start >= start - 0.05 and w.end <= end + 0.05]
-        if words:
-            ass_name = f"{name}.ass"
-            build_ass(words, start, out_dir / ass_name, style)
+        caption_words = words if words is not None else clip_words(segments, start, end)
+        if caption_words:
+            ass_name = f"{out_file.stem}.ass"
+            build_ass(caption_words, start, out_dir / ass_name, style)
             vf += f",ass={ass_name}"
+    if preview:
+        vf += ",scale=540:960"
 
     cmd = [
         "ffmpeg", "-y", "-loglevel", "error", "-progress", "pipe:1", "-nostats",
         "-ss", f"{start:.3f}", "-i", str(Path(video).resolve()),
         "-t", f"{end - start:.3f}",
         "-vf", vf,
-        "-c:v", "libx264", "-preset", "veryfast", "-crf", "20", "-pix_fmt", "yuv420p",
-        "-c:a", "aac", "-b:a", "160k", "-movflags", "+faststart",
+        "-c:v", "libx264", "-preset", "ultrafast" if preview else "veryfast", "-crf", "30" if preview else "20",
+        "-pix_fmt", "yuv420p",
+        "-c:a", "aac", "-b:a", "96k" if preview else "160k", "-movflags", "+faststart",
         out_file.name,
     ]
     duration = end - start
