@@ -81,3 +81,16 @@ Set `YT_ACCOUNTS=main,second` in `.env` (any names, comma separated; keep `main`
 ## Editing a clip
 
 Under each clip, open **Edit this clip** to change the start/end time, framing, caption style, or fix the caption text (same number of words, so the timing still matches). **Preview (fast)** makes a quick low-resolution version to check; **Save final** re-renders the clip at full quality and replaces it. If you saved a new cut before uploading, the YouTube title and description are written again for it.
+
+## Output quality
+
+`Output quality` in the sidebar (CLI: `--quality draft|standard|high|max`):
+
+| Level | Output | Encoder | Link download up to |
+|---|---|---|---|
+| draft | 720x1280 | fast, smaller files | 720p |
+| standard | 1080x1920 | balanced (the original behaviour) | 1080p |
+| high | 1080x1920 | better encoder settings + mild sharpening | 1440p |
+| max | 1080x1920 | best settings, slowest | 4K |
+
+The picture can never be sharper than the source video. Cropping a widescreen video to vertical uses only about a third of its pixels, so crop modes look softer than the full-frame modes; a higher-resolution source (or `high`) helps most there. YouTube re-compresses uploads, so `max` rarely looks better than `high` on YouTube.

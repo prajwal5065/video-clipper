@@ -7,14 +7,15 @@ def is_url(text):
 
 
 def download(url, out_dir, max_height=1080, on_progress=None):
-    """on_progress(fraction 0..1) is called while downloading."""
+    """Downloads the best quality up to max_height (if the video has it).
+    on_progress(fraction 0..1) is called while downloading."""
     import yt_dlp  # lazy import
 
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     opts = {
         "format": f"bv*[height<={max_height}]+ba/b[height<={max_height}]/b",
-        "outtmpl": str(out_dir / "%(id)s.%(ext)s"),
+        "outtmpl": str(out_dir / f"%(id)s-{max_height}p.%(ext)s"),  # height in the name: no stale low-quality reuse
         "merge_output_format": "mp4",
         "noplaylist": True,
         "quiet": True,

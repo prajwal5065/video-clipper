@@ -13,6 +13,16 @@ def _slug(text):
 
 FRAMING_MODES = ("face", "center", "fit", "fit-black")
 
+# Output quality levels. 'standard' keeps the original behaviour.
+#   crf: lower = better picture and bigger file; preset: slower = smaller file at the same quality.
+QUALITY = {
+    "draft":    dict(w=720,  h=1280, crf=24, preset="veryfast", audio="128k", max_height=720,  sharpen=False),
+    "standard": dict(w=1080, h=1920, crf=20, preset="veryfast", audio="160k", max_height=1080, sharpen=False),
+    "high":     dict(w=1080, h=1920, crf=17, preset="medium",   audio="192k", max_height=1440, sharpen=True),
+    "max":      dict(w=1080, h=1920, crf=14, preset="slow",     audio="256k", max_height=2160, sharpen=True),
+}
+SHARPEN = "unsharp=5:5:0.7:5:5:0.0"  # mild, luma only: brings back detail lost when enlarging a crop
+
 
 def clip_words(segments, start, end):
     """Words that fall inside [start, end] (absolute video time)."""
@@ -30,32 +40,36 @@ def video_duration(path):
         return None
 
 
-def _framing_filter(mode, face_frac):
-    """FFmpeg filter that turns any video into 1080x1920.
+def _framing_filter(mode, face_frac, w=1080, h=1920, sharpen=False):
+    """FFmpeg filter that turns any video into w x h (default 1080x1920).
     face / center: crop the middle (or the face) of the frame  -> fills the screen, loses the sides.
     fit:           whole frame kept, blurred copy of the video fills the empty space.
     fit-black:     whole frame kept, black bars above and below."""
+    sh = f",{SHARPEN}" if sharpen else ""
     if mode == "fit":
-        return ("split=2[a][b];"
-                "[a]scale=270:480:force_original_aspect_ratio=increase,crop=270:480,"
-                "boxblur=10:3,scale=1080:1920[bg];"
-                "[b]scale=1080:1920:force_original_aspect_ratio=decrease[fg];"
-                "[bg][fg]overlay=(W-w)/2:(H-h)/2")
+        return (f"split=2[a][b];"
+                f"[a]scale={w // 4}:{h // 4}:force_original_aspect_ratio=increase,crop={w // 4}:{h // 4},"
+                f"boxblur=10:3,scale={w}:{h}[bg];"
+                f"[b]scale={w}:{h}:force_original_aspect_ratio=decrease:flags=lanczos{sh}[fg];"
+                f"[bg][fg]overlay=(W-w)/2:(H-h)/2")
     if mode == "fit-black":
-        return "scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2:black"
+        return (f"scale={w}:{h}:force_original_aspect_ratio=decrease:flags=lanczos{sh},"
+                f"pad={w}:{h}:(ow-iw)/2:(oh-ih)/2:black")
     if face_frac is None:
         x_expr = "(iw-ow)/2"  # centre crop
     else:
         x_expr = f"max(0,min(iw-ow,{face_frac:.4f}*iw-ow/2))"  # keep the face centred
-    return f"crop=w='min(iw,ih*9/16)':h='min(ih,iw*16/9)':x='{x_expr}':y='(ih-oh)/2',scale=1080:1920"
+    return (f"crop=w='min(iw,ih*9/16)':h='min(ih,iw*16/9)':x='{x_expr}':y='(ih-oh)/2',"
+            f"scale={w}:{h}:flags=lanczos{sh}")
 
 
 def render_clip(video, clip, segments, out_dir, index, captions=True, crop="face", style="classic",
-                on_progress=None, words=None, out_name=None, preview=False):
+                on_progress=None, words=None, out_name=None, preview=False, quality="standard"):
     """on_progress(fraction 0..1) is called while FFmpeg encodes this clip.
     words:    optional replacement caption words (absolute times), e.g. after the user fixed spelling.
     out_name: output file name (default: <index>-<title>.mp4).
-    preview:  fast low-resolution render (540x960) for checking an edit before saving."""
+    preview:  fast low-resolution render (540x960) for checking an edit before saving.
+    quality:  one of QUALITY (draft / standard / high / max)."""
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     start, end = float(clip["start"]), float(clip["end"])
@@ -63,7 +77,8 @@ def render_clip(video, clip, segments, out_dir, index, captions=True, crop="face
     out_file = out_dir / (out_name or f"{name}.mp4")
 
     frac = face_center(video, start, end) if crop == "face" else None
-    vf = _framing_filter(crop, frac)
+    q = QUALITY.get(quality, QUALITY["standard"])
+    vf = _framing_filter(crop, frac, q["w"], q["h"], q["sharpen"] and not preview)
     ass_name = None
     if captions:
         caption_words = words if words is not None else clip_words(segments, start, end)
@@ -79,9 +94,9 @@ def render_clip(video, clip, segments, out_dir, index, captions=True, crop="face
         "-ss", f"{start:.3f}", "-i", str(Path(video).resolve()),
         "-t", f"{end - start:.3f}",
         "-vf", vf,
-        "-c:v", "libx264", "-preset", "ultrafast" if preview else "veryfast", "-crf", "30" if preview else "20",
-        "-pix_fmt", "yuv420p",
-        "-c:a", "aac", "-b:a", "96k" if preview else "160k", "-movflags", "+faststart",
+        "-c:v", "libx264", "-preset", "ultrafast" if preview else q["preset"], "-crf", "30" if preview else str(q["crf"]),
+        "-profile:v", "high", "-pix_fmt", "yuv420p",
+        "-c:a", "aac", "-b:a", "96k" if preview else q["audio"], "-movflags", "+faststart",
         out_file.name,
     ]
     duration = end - start
