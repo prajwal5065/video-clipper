@@ -12,7 +12,7 @@ from clipper.captions import STYLES
 from clipper.download import download
 from clipper.metadata import generate_metadata, transcript_for
 from clipper.youtube import accounts, forget_account, upload
-from clipper.render import clip_words, render_clip, video_duration
+from clipper.render import QUALITY, clip_words, render_clip, video_duration
 from clipper.select import pick_clips
 
 load_dotenv()
@@ -44,6 +44,14 @@ FRAMING_LABELS = {
     "Crop: center": "center",
     "Full frame + blurred background": "fit",
     "Full frame + black bars": "fit-black",
+}
+
+
+QUALITY_LABELS = {
+    "Draft: 720p, fastest": "draft",
+    "Standard: 1080p, balanced": "standard",
+    "High: 1080p, sharper (slower)": "high",
+    "Max: best quality (slowest)": "max",
 }
 
 
@@ -94,6 +102,7 @@ def edit_panel(idx, c, job):
                 new = {**c, "start": start, "end": end}
                 out = render_clip(src, new, segments, out_dir, idx + 1, captions=cap_on,
                                   crop=FRAMING_LABELS[f_label], style=sty, words=words,
+                                  quality=c.get("quality", "standard"),
                                   out_name=f"preview-{idx + 1:02d}.mp4" if do_preview else None,
                                   preview=do_preview, on_progress=bar.progress)
             except Exception as e:
@@ -126,6 +135,12 @@ with st.sidebar:
     compute = st.selectbox("Compute type", ["int8", "float16"], help="int8 for CPU, float16 for NVIDIA GPU")
     crop = FRAMING_LABELS[st.selectbox("Framing", list(FRAMING_LABELS), help="Crop fills the screen but cuts off the sides. "
                                        "Full frame keeps everything and fills the space above and below.")]
+    quality = QUALITY_LABELS[st.selectbox(
+        "Output quality", list(QUALITY_LABELS), index=1,
+        help="Higher levels use a better video encoder setting and sharper scaling, so files are bigger and "
+             "rendering takes longer. For links they also download a higher-resolution source (1440p / 4K "
+             "only if the video has it; those files are large). The picture can never be sharper than the "
+             "original video.")]
     captions = st.checkbox("Burn in captions", value=True)
     style = st.selectbox("Caption style", list(STYLES), disabled=not captions)
     st.divider()
@@ -145,6 +160,7 @@ if st.button("Generate clips", type="primary"):
         try:
             tracker.set(0.0, "Downloading video...")
             src = download(link.strip(), Path("output") / "_downloads",
+                           max_height=QUALITY[quality]["max_height"],
                            on_progress=lambda f: tracker.set(0.10 * f, "Downloading video..."))
         except Exception as e:
             st.error(f"Download failed: {e}. Update yt-dlp (pip install -U yt-dlp) or upload the file instead.")
@@ -189,8 +205,8 @@ if st.button("Generate clips", type="primary"):
             def on_clip(f, i=i, title=c.get("title", "")):
                 tracker.set(0.68 + 0.32 * ((i - 1 + f) / len(clips)), f"Rendering clip {i} of {len(clips)}: {title}")
             on_clip(0.0)
-            c["crop"], c["style"], c["captions"] = crop, style, captions
-            f = render_clip(src, c, segments, out_dir, i, captions=captions, crop=crop, style=style,
+            c["crop"], c["style"], c["captions"], c["quality"] = crop, style, captions, quality
+            f = render_clip(src, c, segments, out_dir, i, captions=captions, crop=crop, style=style, quality=quality,
                             on_progress=on_clip)
             results.append((c, str(f)))
         tracker.set(1.0, f"Done: {len(results)} clips ready")
