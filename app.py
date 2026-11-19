@@ -9,7 +9,7 @@ from dotenv import load_dotenv
 
 from clipper import transcribe as tr
 from clipper.captions import STYLES
-from clipper.download import download
+from clipper.download import describe, download, human_size, human_time
 from clipper.metadata import generate_metadata, transcript_for
 from clipper.youtube import accounts, forget_account, upload
 from clipper.render import QUALITY, clip_words, render_clip, video_duration
@@ -154,14 +154,33 @@ uploaded = st.file_uploader("Upload a video", type=["mp4", "mov", "mkv", "webm",
 local_path = st.text_input("...or paste a local file path (better for very large videos)")
 
 if st.button("Generate clips", type="primary"):
+    dl_bar = dl_text = None
+    if link.strip():  # a dedicated download bar, shown above the overall bar
+        dl_bar = st.progress(0.0)
+        dl_text = st.empty()
     tracker = Tracker()
     # Overall bar: download 0-10%, transcription 10-60%, Gemini 60-68%, rendering 68-100%
     if link.strip():
+        dl_state = {"best": 0.0, "start": time.time()}
+
+        def on_download(info):
+            head, detail = describe(info)
+            if info.get("stage") == "processing":
+                dl_state["best"] = 1.0
+            elif info.get("fraction") is not None:  # never moves backwards (video file, then audio file)
+                dl_state["best"] = max(dl_state["best"], min(info["fraction"], 1.0))
+            dl_bar.progress(dl_state["best"])
+            elapsed = human_time(time.time() - dl_state["start"])
+            dl_text.markdown(f"**{head}**  \n{detail + ' · ' if detail else ''}elapsed {elapsed}")
+            tracker.set(0.10 * dl_state["best"], "Downloading video...")
+
         try:
             tracker.set(0.0, "Downloading video...")
             src = download(link.strip(), Path("output") / "_downloads",
-                           max_height=QUALITY[quality]["max_height"],
-                           on_progress=lambda f: tracker.set(0.10 * f, "Downloading video..."))
+                           max_height=QUALITY[quality]["max_height"], on_progress=on_download)
+            dl_bar.progress(1.0)
+            dl_text.markdown(f"**Downloaded {human_size(Path(src).stat().st_size)}** "
+                             f"in {human_time(time.time() - dl_state['start'])}")
         except Exception as e:
             st.error(f"Download failed: {e}. Update yt-dlp (pip install -U yt-dlp) or upload the file instead.")
             st.stop()

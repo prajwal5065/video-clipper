@@ -13,7 +13,7 @@ from dotenv import load_dotenv
 from clipper import transcribe as tr
 from clipper.select import pick_clips
 from clipper.captions import STYLES
-from clipper.download import download, is_url
+from clipper.download import describe, download, is_url
 from clipper.render import QUALITY, render_clip
 
 
@@ -39,7 +39,13 @@ def main():
     load_dotenv()
     if is_url(a.video):
         print("Downloading video...")
-        video = download(a.video, Path(a.out) / "_downloads", max_height=QUALITY[a.quality]["max_height"])
+        def show(info):
+            head, detail = describe(info)
+            print(f"\r{head}  {detail}".ljust(100), end="", flush=True)
+
+        video = download(a.video, Path(a.out) / "_downloads", max_height=QUALITY[a.quality]["max_height"],
+                         on_progress=show)
+        print()
     else:
         video = Path(a.video)
     if not video.exists():
