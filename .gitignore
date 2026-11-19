@@ -17,7 +17,8 @@ output/
 *.mp4
 *.mov
 *.mkv
-*.webm
+client_secret*.json
+token.json
 
 # Cache
 .cache/
