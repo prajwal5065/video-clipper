@@ -23,6 +23,7 @@ def main():
     p.add_argument("--clips", type=int, default=5, help="how many clips to make")
     p.add_argument("--min", type=int, default=20, dest="min_len", help="min clip seconds")
     p.add_argument("--max", type=int, default=60, dest="max_len", help="max clip seconds")
+    p.add_argument("--model", default=None, help="Gemini model (e.g. gemini-2.5-flash, gemini-3.8-flash)")
     p.add_argument("--whisper", default="small", help="tiny/base/small/medium/large-v3")
     p.add_argument("--device", default="auto", help="auto/cpu/cuda")
     p.add_argument("--compute-type", default="int8", help="int8 (CPU) or float16 (GPU)")
@@ -57,7 +58,7 @@ def main():
         sys.exit("No speech found in this video.")
 
     print("Asking the LLM for the best moments...")
-    clips = pick_clips(segments, a.clips, a.min_len, a.max_len)
+    clips = pick_clips(segments, a.clips, a.min_len, a.max_len, model=a.model)
     (out_dir / "clips.json").write_text(json.dumps(clips, indent=1), encoding="utf-8")
     for i, c in enumerate(clips, 1):
         print(f"  {i}. {c['start']:.0f}s-{c['end']:.0f}s  [{c.get('score', '?')}]  {c.get('title', '')}")

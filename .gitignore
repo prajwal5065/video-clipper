@@ -1,10 +1,23 @@
+# Python
 __pycache__/
 *.pyc
-.env
 .venv/
+venv/
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+.streamlit/secrets.toml
+client_secret*.json
+token.json
+
+# Generated videos
 output/
 *.mp4
 *.mov
 *.mkv
-client_secret*.json
-token.json
+*.webm
+
+# Cache
+.cache/

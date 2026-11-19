@@ -3,7 +3,7 @@ import json
 import os
 import re
 
-from .select import _ask
+from .select import DEFAULT_MODEL, _ask, _clean_json
 
 PROMPT = """You write YouTube Shorts metadata that gets clicks without clickbait lies.
 Based on this transcript of a short clip, return ONLY JSON:
@@ -49,9 +49,9 @@ def normalize(raw):
 
 
 def generate_metadata(transcript, model=None):
-    model = model or os.environ.get("GEMINI_MODEL", "gemini-3.8-flash")
+    model = model or os.environ.get("GEMINI_MODEL", DEFAULT_MODEL)
     text = _ask(PROMPT.format(transcript=transcript[:12000]), model)
-    data = json.loads(text)
+    data = json.loads(_clean_json(text))
     if isinstance(data, list):
         data = data[0]
     return normalize(data)

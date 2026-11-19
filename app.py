@@ -1,4 +1,5 @@
 """Local web UI for video-clipper.  Run:  streamlit run app.py"""
+import os
 from datetime import date, datetime, time as dtime, timedelta
 from pathlib import Path
 
@@ -28,6 +29,17 @@ with st.sidebar:
     crop = st.selectbox("Crop", ["face", "center"])
     captions = st.checkbox("Burn in captions", value=True)
     style = st.selectbox("Caption style", list(STYLES), disabled=not captions)
+
+    st.header("AI Model")
+    model_options = ["gemini-2.5-flash", "gemini-3.8-flash", "gemini-2.0-flash", "gemini-1.5-flash"]
+    env_model = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
+    default_idx = model_options.index(env_model) if env_model in model_options else 0
+    gemini_model = st.selectbox(
+        "Gemini model",
+        model_options,
+        index=default_idx,
+        help="Model used for picking moments & metadata. Automatically retries and falls back if a model experiences high demand.",
+    )
 
 link = st.text_input("Paste a video link (YouTube or similar)")
 uploaded = st.file_uploader("Upload a video", type=["mp4", "mov", "mkv", "webm", "m4v"])
@@ -69,8 +81,8 @@ if st.button("Generate clips", type="primary"):
             if not segments:
                 st.error("No speech found in this video.")
                 st.stop()
-            st.write("Asking Gemini for the best moments...")
-            clips = pick_clips(segments, n_clips, min_len, max_len)
+            st.write(f"Asking Gemini ({gemini_model}) for the best moments...")
+            clips = pick_clips(segments, n_clips, min_len, max_len, model=gemini_model)
             for c in clips:
                 c["transcript"] = transcript_for(segments, c["start"], c["end"])
             results = []
@@ -86,7 +98,9 @@ if st.button("Generate clips", type="primary"):
         if "GEMINI_API_KEY" in str(e):
             st.error("GEMINI_API_KEY is missing. Add it to your .env file and restart.")
         else:
-            raise
+            st.error(f"Missing configuration: {e}")
+    except Exception as e:
+        st.error(f"Failed to generate clips: {e}")
 
 results = st.session_state.get("results", [])
 if results:
@@ -109,12 +123,14 @@ if results:
                     with st.status("Uploading and scheduling...", expanded=True) as sstatus:
                         for (sc, spath), when in zip(results, slots):
                             st.write(f"{sc.get('title', 'Clip')} -> {when:%d %b %Y, %H:%M}")
-                            sc["meta"] = sc.get("meta") or generate_metadata(sc.get("transcript", ""))
+                            sc["meta"] = sc.get("meta") or generate_metadata(sc.get("transcript", ""), model=gemini_model)
                             sc["yt_url"] = upload(spath, sc["meta"], publish_at=when)
                             sc["scheduled"] = when
                         sstatus.update(label="All clips uploaded and scheduled", state="complete")
                 except FileNotFoundError as e:
                     st.error(str(e))
+                except KeyError as e:
+                    st.error("GEMINI_API_KEY is missing in .env." if "GEMINI" in str(e) else f"Missing: {e}")
                 except Exception as e:
                     st.error(f"Scheduling failed: {e}")
     cols = st.columns(3)
@@ -129,7 +145,7 @@ if results:
             if st.button("Upload to YouTube", key=f"up{idx}"):
                 try:
                     with st.spinner("Writing title, description and tags, then uploading..."):
-                        c["meta"] = c.get("meta") or generate_metadata(c.get("transcript", ""))
+                        c["meta"] = c.get("meta") or generate_metadata(c.get("transcript", ""), model=gemini_model)
                         c["yt_url"] = upload(path, c["meta"])
                 except FileNotFoundError as e:
                     st.error(str(e))
