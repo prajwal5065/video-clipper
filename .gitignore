@@ -11,6 +11,7 @@ venv/
 .streamlit/secrets.toml
 client_secret*.json
 token.json
+token_*.json
 
 # Generated videos
 output/
