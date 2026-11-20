@@ -275,7 +275,10 @@ if results:
                         for (sc, spath), when in zip(results, slots):
                             st.write(f"{sc.get('title', 'Clip')} -> {when:%d %b %Y, %H:%M}")
                             sc["meta"] = sc.get("meta") or generate_metadata(sc.get("transcript", ""), model=gemini_model)
-                            sc["yt_url"] = upload(spath, sc["meta"], publish_at=when, account=yt_account)
+                            sc_bar = st.progress(0.0)
+                            sc["yt_url"] = upload(spath, sc["meta"], publish_at=when, account=yt_account,
+                                                  on_progress=sc_bar.progress)
+                            sc_bar.empty()
                             sc["yt_account"] = yt_account
                             sc["scheduled"] = when
                         sstatus.update(label="All clips uploaded and scheduled", state="complete")
@@ -283,6 +286,8 @@ if results:
                     st.error(str(e))
                 except KeyError as e:
                     st.error("GEMINI_API_KEY is missing in .env." if "GEMINI" in str(e) else f"Missing: {e}")
+                except RuntimeError as e:
+                    st.error(str(e))
                 except Exception as e:
                     st.error(f"Scheduling failed: {e}")
     cols = st.columns(3)
@@ -299,14 +304,23 @@ if results:
                                mime="video/mp4", key=f"dl{idx}")
             if st.button("Upload to YouTube", key=f"up{idx}"):
                 try:
-                    with st.spinner("Writing title, description and tags, then uploading..."):
-                        c["meta"] = c.get("meta") or generate_metadata(c.get("transcript", ""), model=gemini_model)
-                        c["yt_url"] = upload(path, c["meta"], account=yt_account)
-                        c["yt_account"] = yt_account
+                    c["meta"] = c.get("meta") or generate_metadata(c.get("transcript", ""), model=gemini_model)
+                    up_bar = st.progress(0.0)
+                    up_text = st.empty()
+                    up_text.markdown("**Uploading to YouTube…** 0%")
+                    def _on_up(frac, _bar=up_bar, _txt=up_text):
+                        _bar.progress(frac)
+                        _txt.markdown(f"**Uploading to YouTube…** {int(frac * 100)}%")
+                    c["yt_url"] = upload(path, c["meta"], account=yt_account, on_progress=_on_up)
+                    c["yt_account"] = yt_account
+                    up_bar.empty()
+                    up_text.empty()
                 except FileNotFoundError as e:
                     st.error(str(e))
                 except KeyError as e:
                     st.error("GEMINI_API_KEY is missing in .env." if "GEMINI" in str(e) else f"Missing: {e}")
+                except RuntimeError as e:
+                    st.error(str(e))
                 except Exception as e:
                     st.error(f"Upload failed: {e}")
             if c.get("yt_url"):
