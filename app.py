@@ -143,11 +143,6 @@ with st.sidebar:
              "original video.")]
     captions = st.checkbox("Burn in captions", value=True)
     style = st.selectbox("Caption style", list(STYLES), disabled=not captions)
-    st.divider()
-    yt_account = st.selectbox("YouTube account to upload to", yt_accounts)
-    if st.button("Forget sign-in for this account"):
-        forget_account(yt_account)
-        st.success(f"Signed out '{yt_account}'. Next upload asks you to sign in again.")
 
     st.header("AI Model")
     model_options = ["gemini-2.5-flash", "gemini-3.8-flash", "gemini-2.0-flash", "gemini-1.5-flash"]
@@ -159,6 +154,11 @@ with st.sidebar:
         index=default_idx,
         help="Model used for picking moments & metadata. Automatically retries and falls back if a model experiences high demand.",
     )
+    st.divider()
+    yt_account = st.selectbox("YouTube account to upload to", yt_accounts)
+    if st.button("Forget sign-in for this account"):
+        forget_account(yt_account)
+        st.success(f"Signed out '{yt_account}'. Next upload asks you to sign in again.")
 
 link = st.text_input("Paste a video link (YouTube or similar)")
 uploaded = st.file_uploader("Upload a video", type=["mp4", "mov", "mkv", "webm", "m4v"])
@@ -212,29 +212,34 @@ if st.button("Generate clips", type="primary"):
     out_dir.mkdir(parents=True, exist_ok=True)
     transcript_file = out_dir / "transcript.json"
     try:
-        with st.status("Working...", expanded=True) as status:
-            if transcript_file.exists():
-                st.write("Using cached transcript.")
-                segments = tr.load(transcript_file)
-            else:
-                st.write(f"Transcribing with Whisper '{whisper}' (slowest step)...")
-                segments = tr.transcribe(src, whisper, device, compute)
-                tr.save(segments, transcript_file)
-            if not segments:
-                st.error("No speech found in this video.")
-                st.stop()
-            st.write(f"Asking Gemini ({gemini_model}) for the best moments...")
-            clips = pick_clips(segments, n_clips, min_len, max_len, model=gemini_model)
-            for c in clips:
-                c["transcript"] = transcript_for(segments, c["start"], c["end"])
-            results = []
-            bar = st.progress(0.0)
-            for i, c in enumerate(clips, 1):
-                st.write(f"Rendering clip {i}/{len(clips)}: {c.get('title', '')}")
-                f = render_clip(src, c, segments, out_dir, i, captions=captions, crop=crop, style=style)
-                results.append((c, str(f)))
-                bar.progress(i / len(clips))
-            status.update(label="Done", state="complete")
+        if transcript_file.exists():
+            tracker.set(0.60, "Using the saved transcript")
+            segments = tr.load(transcript_file)
+        else:
+            tracker.set(0.10, f"Preparing audio and loading Whisper '{whisper}' (the first run downloads the model)...")
+            segments = tr.transcribe(
+                src, whisper, device, compute,
+                on_progress=lambda done, total: tracker.set(
+                    0.10 + 0.50 * (done / total if total else 1),
+                    f"Transcribing speech: {_mmss(done)} of {_mmss(total)}"))
+            tr.save(segments, transcript_file)
+        if not segments:
+            st.error("No speech found in this video.")
+            st.stop()
+        tracker.set(0.62, f"Asking Gemini ({gemini_model}) for the best moments...")
+        clips = pick_clips(segments, n_clips, min_len, max_len, model=gemini_model)
+        for c in clips:
+            c["transcript"] = transcript_for(segments, c["start"], c["end"])
+        results = []
+        for i, c in enumerate(clips, 1):
+            def on_clip(f, i=i, title=c.get("title", "")):
+                tracker.set(0.68 + 0.32 * ((i - 1 + f) / len(clips)), f"Rendering clip {i} of {len(clips)}: {title}")
+            on_clip(0.0)
+            c["crop"], c["style"], c["captions"], c["quality"] = crop, style, captions, quality
+            f = render_clip(src, c, segments, out_dir, i, captions=captions, crop=crop, style=style, quality=quality,
+                            on_progress=on_clip)
+            results.append((c, str(f)))
+        tracker.set(1.0, f"Done: {len(results)} clips ready")
         st.session_state["results"] = results
         st.session_state["job"] = {"src": str(src), "segments": segments, "out_dir": str(out_dir),
                                    "duration": video_duration(src)}
@@ -270,7 +275,8 @@ if results:
                         for (sc, spath), when in zip(results, slots):
                             st.write(f"{sc.get('title', 'Clip')} -> {when:%d %b %Y, %H:%M}")
                             sc["meta"] = sc.get("meta") or generate_metadata(sc.get("transcript", ""), model=gemini_model)
-                            sc["yt_url"] = upload(spath, sc["meta"], publish_at=when)
+                            sc["yt_url"] = upload(spath, sc["meta"], publish_at=when, account=yt_account)
+                            sc["yt_account"] = yt_account
                             sc["scheduled"] = when
                         sstatus.update(label="All clips uploaded and scheduled", state="complete")
                 except FileNotFoundError as e:
@@ -295,7 +301,8 @@ if results:
                 try:
                     with st.spinner("Writing title, description and tags, then uploading..."):
                         c["meta"] = c.get("meta") or generate_metadata(c.get("transcript", ""), model=gemini_model)
-                        c["yt_url"] = upload(path, c["meta"])
+                        c["yt_url"] = upload(path, c["meta"], account=yt_account)
+                        c["yt_account"] = yt_account
                 except FileNotFoundError as e:
                     st.error(str(e))
                 except KeyError as e:
