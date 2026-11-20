@@ -94,3 +94,14 @@ Under each clip, open **Edit this clip** to change the start/end time, framing, 
 | max | 1080x1920 | best settings, slowest | 4K |
 
 The picture can never be sharper than the source video. Cropping a widescreen video to vertical uses only about a third of its pixels, so crop modes look softer than the full-frame modes; a higher-resolution source (or `high`) helps most there. YouTube re-compresses uploads, so `max` rarely looks better than `high` on YouTube.
+
+## API server (backend for the new React interface)
+
+Start it with `py -3.11 -m server`. It listens on http://127.0.0.1:8000 (this computer only; it can upload to your YouTube channel, so it is never exposed to the network). Open http://127.0.0.1:8000/api/docs to see every endpoint and try them in the browser.
+
+- Jobs run in the background one at a time, with live progress (download speed, transcription, rendering) and can be cancelled.
+- Everything is saved to disk (`output/jobs/<id>/`), so clips and progress survive a restart, which the Streamlit page could not do.
+- Clips can be previewed, trimmed, re-framed, re-styled, caption-corrected, given AI or hand-written YouTube metadata, uploaded to a chosen account, or scheduled.
+- Tests: `pip install -r requirements-dev.txt` then `pytest tests` (Whisper, Gemini, yt-dlp and YouTube are faked; FFmpeg is real).
+
+The Streamlit page (`streamlit run app.py`) still works unchanged while the React interface is built.

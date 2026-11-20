@@ -6,3 +6,6 @@ streamlit>=1.35
 yt-dlp
 google-api-python-client
 google-auth-oauthlib
+fastapi
+uvicorn
+python-multipart
