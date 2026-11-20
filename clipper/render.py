@@ -102,17 +102,22 @@ def render_clip(video, clip, segments, out_dir, index, captions=True, crop="face
     duration = end - start
     proc = subprocess.Popen(cmd, cwd=out_dir, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     log = []  # cwd above lets the ass= path stay simple
-    for line in proc.stdout:
-        line = line.strip()
-        if line.startswith(("out_time_us=", "out_time_ms=")):
-            try:
-                seconds = int(line.split("=", 1)[1]) / 1_000_000
-            except ValueError:
-                continue
-            if on_progress and duration > 0:
-                on_progress(max(0.0, min(seconds / duration, 1.0)))
-        elif line and not re.match(r"^\w+=", line):
-            log.append(line)
+    try:
+        for line in proc.stdout:
+            line = line.strip()
+            if line.startswith(("out_time_us=", "out_time_ms=")):
+                try:
+                    seconds = int(line.split("=", 1)[1]) / 1_000_000
+                except ValueError:
+                    continue
+                if on_progress and duration > 0:
+                    on_progress(max(0.0, min(seconds / duration, 1.0)))
+            elif line and not re.match(r"^\w+=", line):
+                log.append(line)
+    except BaseException:  # e.g. the job was cancelled inside on_progress: do not leave FFmpeg running
+        proc.kill()
+        proc.wait()
+        raise
     if proc.wait() != 0:
         raise RuntimeError("FFmpeg failed: " + " | ".join(log[-5:]))
     if ass_name:
