@@ -105,3 +105,14 @@ Start it with `py -3.11 -m server`. It listens on http://127.0.0.1:8000 (this co
 - Tests: `pip install -r requirements-dev.txt` then `pytest tests` (Whisper, Gemini, yt-dlp and YouTube are faked; FFmpeg is real).
 
 The Streamlit page (`streamlit run app.py`) still works unchanged while the React interface is built.
+
+## New interface (React)
+
+1. Start the server: `py -3.11 -m server`
+2. Open http://127.0.0.1:8000
+
+The finished site is in `webui/` (committed), so you do not need Node.js just to use it. Screens: **New clips** (paste a link / upload / local path, then clip count and length, framing, quality, captions), **live progress** (download speed and time left, transcription position, which clip is rendering, cancel), **Library** (every job, saved on this computer) and **Settings** (Gemini key, YouTube accounts). Clip editing and YouTube upload screens come in the next stages; until then the Streamlit page (`streamlit run app.py`) still has them.
+
+Look around without waiting for real processing: `py -3.11 scripts/demo_server.py` (fake download, Whisper, Gemini and YouTube; real FFmpeg), then open http://127.0.0.1:8010.
+
+For developers: `cd frontend && npm install`, then `npm run dev` (http://localhost:5173, talks to the server on :8000), `npm test`, `npm run build` (writes `webui/`). `tests/` also checks that the saved API fixtures used by the React tests still match the real API.

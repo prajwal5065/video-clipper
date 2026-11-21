@@ -1,0 +1,32 @@
+{
+  "id": "99c19a64ad",
+  "created": 1795235180.5822656,
+  "updated": 1795235180.6297994,
+  "status": "failed",
+  "stage": "select",
+  "progress": 0.62,
+  "message": "Failed",
+  "label": "interview.mp4",
+  "spec": {
+    "source_type": "path",
+    "source": "C:/videos/interview.mp4",
+    "clips": 5,
+    "min_len": 20,
+    "max_len": 60,
+    "whisper": "small",
+    "device": "auto",
+    "compute_type": "int8",
+    "crop": "face",
+    "quality": "draft",
+    "captions": true,
+    "style": "classic",
+    "model": null
+  },
+  "error": "GEMINI_API_KEY is missing. Add it to your .env file and restart the server.",
+  "download": null,
+  "transcribe": null,
+  "render": null,
+  "duration": null,
+  "source": null,
+  "clips": []
+}

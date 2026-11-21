@@ -1,0 +1,35 @@
+{
+  "id": "4c8bd9b815",
+  "created": 1795235172.0297477,
+  "updated": 1795235174.5333807,
+  "status": "running",
+  "stage": "download",
+  "progress": 0.1,
+  "message": "Merging video and audio",
+  "label": "https://www.youtube.com/watch?v=abc123",
+  "spec": {
+    "source_type": "link",
+    "source": "https://www.youtube.com/watch?v=abc123",
+    "clips": 5,
+    "min_len": 20,
+    "max_len": 60,
+    "whisper": "small",
+    "device": "auto",
+    "compute_type": "int8",
+    "crop": "center",
+    "quality": "draft",
+    "captions": true,
+    "style": "classic",
+    "model": null
+  },
+  "error": null,
+  "download": {
+    "stage": "processing",
+    "best": 1.0
+  },
+  "transcribe": null,
+  "render": null,
+  "duration": null,
+  "source": null,
+  "clips": []
+}

@@ -1,0 +1,92 @@
+{
+  "gemini_key_set": true,
+  "youtube_ready": false,
+  "accounts": [
+    {
+      "name": "main",
+      "signed_in": false
+    },
+    {
+      "name": "second",
+      "signed_in": false
+    }
+  ],
+  "framing": [
+    {
+      "id": "face",
+      "label": "Follow the face",
+      "description": "Fills the screen and keeps the speaker in frame; cuts off the sides."
+    },
+    {
+      "id": "center",
+      "label": "Center crop",
+      "description": "Fills the screen with the middle of the picture; cuts off the sides."
+    },
+    {
+      "id": "fit",
+      "label": "Full frame, blurred background",
+      "description": "Keeps the whole picture; a blurred copy fills the space."
+    },
+    {
+      "id": "fit-black",
+      "label": "Full frame, black bars",
+      "description": "Keeps the whole picture with black bars above and below."
+    }
+  ],
+  "quality": [
+    {
+      "id": "draft",
+      "label": "Draft",
+      "description": "720p, fastest"
+    },
+    {
+      "id": "standard",
+      "label": "Standard",
+      "description": "1080p, balanced"
+    },
+    {
+      "id": "high",
+      "label": "High",
+      "description": "1080p, sharper, slower"
+    },
+    {
+      "id": "max",
+      "label": "Max",
+      "description": "Best quality, slowest, big downloads"
+    }
+  ],
+  "whisper_models": [
+    "tiny",
+    "base",
+    "small",
+    "medium",
+    "large-v3"
+  ],
+  "caption_styles": [
+    "classic",
+    "hormozi",
+    "mrbeast",
+    "minimal"
+  ],
+  "gemini_models": [
+    "gemini-2.5-flash",
+    "gemini-3.8-flash",
+    "gemini-2.0-flash",
+    "gemini-1.5-flash"
+  ],
+  "defaults": {
+    "gemini_model": "gemini-2.5-flash",
+    "privacy": "private",
+    "made_for_kids": false,
+    "clips": 5,
+    "min_len": 20,
+    "max_len": 60,
+    "whisper": "small",
+    "device": "auto",
+    "compute_type": "int8",
+    "crop": "face",
+    "quality": "standard",
+    "captions": true,
+    "style": "classic"
+  }
+}

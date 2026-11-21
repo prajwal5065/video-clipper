@@ -1,0 +1,40 @@
+{
+  "id": "4c8bd9b815",
+  "created": 1795235172.0297477,
+  "updated": 1795235175.5861204,
+  "status": "running",
+  "stage": "transcribe",
+  "progress": 0.2923,
+  "message": "Transcribing speech: 0:05 of 0:13",
+  "label": "https://www.youtube.com/watch?v=abc123",
+  "spec": {
+    "source_type": "link",
+    "source": "https://www.youtube.com/watch?v=abc123",
+    "clips": 5,
+    "min_len": 20,
+    "max_len": 60,
+    "whisper": "small",
+    "device": "auto",
+    "compute_type": "int8",
+    "crop": "center",
+    "quality": "draft",
+    "captions": true,
+    "style": "classic",
+    "model": null
+  },
+  "error": null,
+  "download": {
+    "stage": "done",
+    "done": 539122,
+    "total": 539122,
+    "best": 1.0
+  },
+  "transcribe": {
+    "done": 5,
+    "total": 13
+  },
+  "render": null,
+  "duration": null,
+  "source": null,
+  "clips": []
+}
