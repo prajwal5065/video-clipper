@@ -34,7 +34,7 @@ WHISPER_MODELS = ["tiny", "base", "small", "medium", "large-v3"]
 GEMINI_MODELS = ["gemini-2.5-flash", "gemini-3.8-flash", "gemini-2.0-flash", "gemini-1.5-flash"]
 
 
-def create_app(root=None):
+def create_app(root=None, webui_dir=None):
     load_dotenv()
     store = JobStore(root or os.environ.get("CLIPPER_DATA_DIR", "output"))
     app = FastAPI(title="Video Clipper API", docs_url="/api/docs", openapi_url="/api/openapi.json")
@@ -148,15 +148,16 @@ def create_app(root=None):
         return {"started": True}
 
     # ---------- the built React app (if present) ----------
-    if WEBUI_DIR.is_dir():
+    web_root = Path(webui_dir) if webui_dir else WEBUI_DIR
+    if web_root.is_dir():
         @app.get("/{path:path}", include_in_schema=False)
         def web(path: str):
             if path.startswith("api/"):
                 raise HTTPException(404)
-            target = (WEBUI_DIR / path).resolve()
-            if path and target.is_file() and WEBUI_DIR.resolve() in target.parents:
+            target = (web_root / path).resolve()
+            if path and target.is_file() and web_root.resolve() in target.parents:
                 return FileResponse(target)
-            return FileResponse(WEBUI_DIR / "index.html")
+            return FileResponse(web_root / "index.html")  # client-side routes (/jobs/abc) load the app
 
     return app
 

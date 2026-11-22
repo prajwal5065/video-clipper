@@ -1,0 +1,13 @@
+[
+  {
+    "id": "4c8bd9b815",
+    "created": 1795235172.0297477,
+    "status": "done",
+    "stage": "done",
+    "progress": 1.0,
+    "message": "2 clips ready",
+    "label": "https://www.youtube.com/watch?v=abc123",
+    "clips": 2,
+    "thumbnail_clip": "c1"
+  }
+]
