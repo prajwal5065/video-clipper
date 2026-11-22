@@ -1,0 +1,160 @@
+{
+  "edit_rendering": {
+    "id": "c1",
+    "index": 1,
+    "title": "Why most startups fail",
+    "reason": "Opens with a bold claim.",
+    "score": 92,
+    "start": 1.0,
+    "end": 6.0,
+    "file": "01-why-most-startups-fail.mp4",
+    "crop": "center",
+    "style": "classic",
+    "captions": true,
+    "quality": "draft",
+    "rev": 1,
+    "meta": null,
+    "yt": null,
+    "edit": {
+      "state": "rendering",
+      "kind": "preview",
+      "progress": 0.0,
+      "error": null
+    },
+    "preview": null
+  },
+  "previewed": {
+    "id": "c1",
+    "index": 1,
+    "title": "Why most startups fail",
+    "reason": "Opens with a bold claim.",
+    "score": 92,
+    "start": 1.0,
+    "end": 6.0,
+    "file": "01-why-most-startups-fail.mp4",
+    "crop": "center",
+    "style": "classic",
+    "captions": true,
+    "quality": "draft",
+    "rev": 1,
+    "meta": null,
+    "yt": null,
+    "edit": {
+      "state": "idle",
+      "kind": "preview",
+      "progress": 1.0,
+      "error": null
+    },
+    "preview": {
+      "file": "preview-01.mp4",
+      "rev": 1795347331.1708682,
+      "start": 2.0,
+      "end": 8.0
+    }
+  },
+  "meta": {
+    "title": "The one thing nobody tells you about growing fast",
+    "description": "Most creators miss this.\n\n#Shorts #growth",
+    "hashtags": [
+      "Shorts",
+      "growth"
+    ],
+    "tags": [
+      "youtube growth",
+      "creator tips"
+    ]
+  },
+  "yt_uploading": {
+    "id": "c1",
+    "index": 1,
+    "title": "Why most startups fail",
+    "reason": "Opens with a bold claim.",
+    "score": 92,
+    "start": 1.0,
+    "end": 6.0,
+    "file": "01-why-most-startups-fail.mp4",
+    "crop": "center",
+    "style": "classic",
+    "captions": true,
+    "quality": "draft",
+    "rev": 1,
+    "meta": {
+      "title": "The one thing nobody tells you about growing fast",
+      "description": "Most creators miss this.\n\n#Shorts #growth",
+      "hashtags": [
+        "Shorts",
+        "growth"
+      ],
+      "tags": [
+        "youtube growth",
+        "creator tips"
+      ]
+    },
+    "yt": {
+      "state": "uploading",
+      "account": "second",
+      "url": null,
+      "error": null,
+      "scheduled": null,
+      "message": "Preparing the upload (a browser window may open for Google sign-in)"
+    },
+    "edit": {
+      "state": "idle",
+      "kind": "preview",
+      "progress": 1.0,
+      "error": null
+    },
+    "preview": {
+      "file": "preview-01.mp4",
+      "rev": 1795347331.1708682,
+      "start": 2.0,
+      "end": 8.0
+    }
+  },
+  "yt_done": {
+    "id": "c1",
+    "index": 1,
+    "title": "Why most startups fail",
+    "reason": "Opens with a bold claim.",
+    "score": 92,
+    "start": 1.0,
+    "end": 6.0,
+    "file": "01-why-most-startups-fail.mp4",
+    "crop": "center",
+    "style": "classic",
+    "captions": true,
+    "quality": "draft",
+    "rev": 1,
+    "meta": {
+      "title": "The one thing nobody tells you about growing fast",
+      "description": "Most creators miss this.\n\n#Shorts #growth",
+      "hashtags": [
+        "Shorts",
+        "growth"
+      ],
+      "tags": [
+        "youtube growth",
+        "creator tips"
+      ]
+    },
+    "yt": {
+      "state": "done",
+      "account": "second",
+      "url": "https://youtu.be/abc123",
+      "error": null,
+      "scheduled": null
+    },
+    "edit": {
+      "state": "idle",
+      "kind": "preview",
+      "progress": 1.0,
+      "error": null
+    },
+    "preview": {
+      "file": "preview-01.mp4",
+      "rev": 1795347331.1708682,
+      "start": 2.0,
+      "end": 8.0
+    }
+  }
+}

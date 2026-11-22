@@ -74,6 +74,10 @@ def main():
     seen = {}
     with mock.patch("clipper.transcribe.transcribe", transcribe), mock.patch("clipper.pipeline.pick_clips", pick), \
             mock.patch("clipper.pipeline.download", download), \
+            mock.patch("server.jobs.generate_metadata", lambda t, model=None: {
+                "title": "The one thing nobody tells you about growing fast", "description": "Most creators miss this.\n\n#Shorts #growth",
+                "hashtags": ["Shorts", "growth"], "tags": ["youtube growth", "creator tips"]}), \
+            mock.patch("clipper.youtube.upload", lambda path, meta, **k: (time.sleep(0.8), "https://youtu.be/abc123")[1]), \
             mock.patch.dict("os.environ", {"YT_ACCOUNTS": "main,second", "GEMINI_API_KEY": "x"}):
         client = TestClient(create_app(tmp / "data"))
         save("config", client.get("/api/config").json(), tmp)
@@ -100,6 +104,32 @@ def main():
         for name, obj in seen.items():
             save(name, obj, tmp)
         save("jobs", client.get("/api/jobs").json(), tmp)
+
+        # clip states: editing, preview, AI metadata, uploading, uploaded
+        first = lambda: client.get(f"/api/jobs/{jid}").json()["clips"][0]  # noqa: E731
+        client.post(f"/api/jobs/{jid}/clips/c1/edit", json={"mode": "preview", "start": 2.0, "end": 8.0})
+        rendering = None
+        while True:
+            clip = first()
+            if rendering is None and clip["edit"]["state"] == "rendering":
+                rendering = clip
+            if clip["edit"]["state"] in ("idle", "error"):
+                break
+            time.sleep(0.01)
+        previewed = clip
+        rendering = rendering or {**previewed, "edit": {"state": "rendering", "kind": "preview", "progress": 0.4, "error": None}}
+        meta = client.post(f"/api/jobs/{jid}/clips/c1/metadata", json={}).json()
+        client.post(f"/api/jobs/{jid}/clips/c1/upload", json={"account": "second"})
+        uploading = None
+        while True:
+            clip = first()
+            if uploading is None and (clip["yt"] or {}).get("state") == "uploading":
+                uploading = clip
+            if (clip["yt"] or {}).get("state") in ("done", "error"):
+                break
+            time.sleep(0.02)
+        save("clip_states", {"edit_rendering": rendering, "previewed": previewed, "meta": meta,
+                             "yt_uploading": uploading or clip, "yt_done": clip}, tmp)
 
         # a failed job and a cancelled job (local file source)
         with mock.patch("clipper.pipeline.pick_clips", mock.Mock(side_effect=KeyError("GEMINI_API_KEY"))):

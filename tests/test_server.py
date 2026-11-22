@@ -265,3 +265,22 @@ def test_delete_removes_files(client, done_job):
     folder = client.app.state.store.job_dir(jid)
     assert client.delete(f"/api/jobs/{jid}").status_code == 204
     assert not folder.exists() and client.get(f"/api/jobs/{jid}").status_code == 404
+
+
+# ---------- still frames for the trim editor ----------
+def test_source_frame_is_a_jpeg_of_the_requested_width(client, done_job):
+    jid, _ = done_job
+    r = client.get(f"/api/jobs/{jid}/frame", params={"t": 3.5, "w": 200})
+    assert r.status_code == 200 and r.headers["content-type"] == "image/jpeg" and r.content[:2] == b"\xff\xd8"
+    assert "max-age" in r.headers["cache-control"]
+    from PIL import Image  # noqa: PLC0415
+    import io
+    assert Image.open(io.BytesIO(r.content)).size[0] == 200
+
+
+def test_source_frame_past_the_end_is_clamped_and_bad_input_rejected(client, done_job):
+    jid, _ = done_job
+    assert client.get(f"/api/jobs/{jid}/frame", params={"t": 9999}).status_code == 200  # last frame, not an error
+    assert client.get(f"/api/jobs/{jid}/frame", params={"t": -1}).status_code == 422
+    assert client.get(f"/api/jobs/{jid}/frame", params={"t": 1, "w": 5000}).status_code == 422
+    assert client.get("/api/jobs/nope/frame", params={"t": 1}).status_code == 404

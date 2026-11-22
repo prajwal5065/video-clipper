@@ -34,8 +34,9 @@ export interface Clip {
   id: string; index: number; title: string; reason: string; score: number | null; start: number; end: number;
   file: string; crop: Crop; style: string; captions: boolean; quality: Quality; rev: number;
   meta: { title: string; description: string; hashtags: string[]; tags: string[] } | null;
-  yt: { state: string; account: string; url: string | null; error: string | null; scheduled: string | null } | null;
-  edit: { state: string; kind?: string; progress?: number; error?: string | null } | null;
+  yt: { state: "uploading" | "done" | "error"; account: string; url: string | null; error: string | null;
+        scheduled: string | null; message?: string } | null;
+  edit: { state: "rendering" | "idle" | "error"; kind?: "preview" | "final"; progress?: number; error?: string | null } | null;
   preview: { file: string; rev: number; start: number; end: number } | null;
 }
 
@@ -50,4 +51,12 @@ export interface Job {
 export interface JobSummary {
   id: string; created: number; status: Status; stage: Stage; progress: number; message: string; label: string;
   clips: number; thumbnail_clip: string | null;
+}
+
+export interface EditBody {
+  mode: "preview" | "final"; start: number; end: number; crop?: Crop; style?: string; captions?: boolean; text?: string;
+}
+export interface MetaBody { title: string; description: string; hashtags: string[]; tags: string[] }
+export interface UploadBody {
+  account?: string; privacy?: "private" | "unlisted" | "public"; made_for_kids?: boolean; publish_at?: string; model?: string;
 }

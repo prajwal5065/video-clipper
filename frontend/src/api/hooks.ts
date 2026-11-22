@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
+import type { Job } from "./types";
 import { isActive } from "../lib/utils";
 import { api } from "./client";
 
@@ -10,8 +11,12 @@ export const useJob = (id: string) =>
   useQuery({
     queryKey: ["job", id],
     queryFn: () => api.job(id),
-    refetchInterval: (q) => (isActive(q.state.data?.status) ? 1000 : false),
+    refetchInterval: (q) => (isActive(q.state.data?.status) || hasBusyClip(q.state.data) ? 1000 : false),
   });
+
+/** A finished job still changes while a clip is re-rendering or uploading. */
+export const hasBusyClip = (job?: Job) =>
+  !!job?.clips?.some((c) => c.edit?.state === "rendering" || c.yt?.state === "uploading");
 
 export const useJobs = () =>
   useQuery({

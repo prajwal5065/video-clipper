@@ -49,3 +49,24 @@ export const isActive = (s?: Status) => !!s && ACTIVE.includes(s);
 export function clipLength(start: number, end: number): string {
   return `${Math.round(end - start)}s`;
 }
+
+/** Split "a, b #c" style input into clean words. */
+export function splitList(text: string): string[] {
+  return text.split(/[,\n]/).map((x) => x.trim().replace(/^#/, "")).filter(Boolean);
+}
+
+/** The value for <input type="datetime-local"> (local time, minutes) `minutes` from now. */
+export function localInputValue(minutesFromNow: number, now = new Date()): string {
+  const d = new Date(now.getTime() + minutesFromNow * 60_000);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+export function isFutureEnough(localValue: string, minMinutes = 10, now = Date.now()): boolean {
+  const t = new Date(localValue).getTime();
+  return Number.isFinite(t) && t > now + minMinutes * 60_000;
+}
+
+export function formatWhen(iso: string): string {
+  return new Date(iso).toLocaleString(undefined, { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" });
+}

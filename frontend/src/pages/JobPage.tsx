@@ -1,10 +1,14 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, RotateCcw, Square, Trash2 } from "lucide-react";
+import { ArrowLeft, CalendarClock, RotateCcw, Square, Trash2 } from "lucide-react";
+import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { api } from "../api/client";
 import { useJob, useNow } from "../api/hooks";
 import type { Job, Status } from "../api/types";
 import { ClipCard } from "../components/ClipCard";
+import { ClipEditor } from "../components/ClipEditor";
+import { ScheduleAllDialog } from "../components/ScheduleAllDialog";
+import { UploadDialog } from "../components/UploadDialog";
 import { StageStepper } from "../components/StageStepper";
 import { Alert } from "../components/ui/Alert";
 import { Button, buttonClass } from "../components/ui/Button";
@@ -49,6 +53,9 @@ export default function JobPage() {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const { data: job, error, isLoading } = useJob(id);
+  const [editId, setEditId] = useState<string | null>(null);
+  const [uploadId, setUploadId] = useState<string | null>(null);
+  const [scheduleAll, setScheduleAll] = useState(false);
   const active = isActive(job?.status);
   const now = useNow(1000, active);
 
@@ -71,6 +78,8 @@ export default function JobPage() {
     );
   }
 
+  const editing = job.clips.find((c) => c.id === editId);
+  const uploading = job.clips.find((c) => c.id === uploadId);
   const badge = STATUS_BADGE[job.status];
   const elapsed = active ? now / 1000 - job.created : job.updated - job.created;
   const pct = Math.round(job.progress * 100);
@@ -145,6 +154,9 @@ export default function JobPage() {
               <span className="font-medium text-fg">{job.clips.length} clips</span> ready · finished in {humanTime(elapsed)}
             </p>
             <div className="flex gap-2">
+              <Button size="sm" variant="secondary" onClick={() => setScheduleAll(true)}>
+                <CalendarClock className="size-4" aria-hidden /> Schedule all
+              </Button>
               <Link to="/" state={{ spec: job.spec }} className={buttonClass("secondary", "sm")}>
                 <RotateCcw className="size-4" aria-hidden /> Run again
               </Link>
@@ -154,8 +166,13 @@ export default function JobPage() {
             </div>
           </div>
           <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            {job.clips.map((c) => <ClipCard key={c.id} jobId={job.id} clip={c} />)}
+            {job.clips.map((c) => (
+              <ClipCard key={c.id} jobId={job.id} clip={c} onEdit={() => setEditId(c.id)} onUpload={() => setUploadId(c.id)} />
+            ))}
           </div>
+          {editing && <ClipEditor job={job} clip={editing} onClose={() => setEditId(null)} />}
+          {uploading && <UploadDialog job={job} clip={uploading} onClose={() => setUploadId(null)} />}
+          {scheduleAll && <ScheduleAllDialog job={job} clips={job.clips.filter((c) => c.yt?.state !== "done")} onClose={() => setScheduleAll(false)} />}
         </>
       )}
     </div>

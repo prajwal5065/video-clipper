@@ -4,6 +4,7 @@ import json
 import os
 import re
 import shutil
+import subprocess
 import threading
 import time
 import uuid
@@ -189,6 +190,25 @@ class JobStore:
             self.jobs.pop(jid, None)
             self._segments.pop(jid, None)
         shutil.rmtree(self.job_dir(jid), ignore_errors=True)
+
+    def frame_jpeg(self, jid, t, width=360):
+        """One JPEG frame of the source video at time t (seconds), so the editor can show what a trim point shows."""
+        job = self.get(jid)
+        src = (job.get("source") or {}).get("path")
+        if not src or not Path(src).exists():
+            raise ApiError(404, "The source video is not available any more.")
+        dur = job.get("duration")
+        if dur:
+            t = min(t, max(0.0, dur - 0.1))
+        try:
+            out = subprocess.run(["ffmpeg", "-v", "error", "-ss", f"{t:.2f}", "-i", src, "-frames:v", "1",
+                                  "-vf", f"scale={width}:-2", "-f", "mjpeg", "pipe:1"],
+                                 capture_output=True, timeout=30).stdout
+        except subprocess.TimeoutExpired:
+            raise ApiError(504, "Reading the video took too long.")
+        if not out:
+            raise ApiError(404, "Could not read a frame at that time.")
+        return out
 
     # ---------- editing a clip ----------
     def caption_text(self, jid, cid):

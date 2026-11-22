@@ -6,9 +6,9 @@ import uuid
 from pathlib import Path
 
 from dotenv import load_dotenv
-from fastapi import FastAPI, File, HTTPException, UploadFile
+from fastapi import FastAPI, File, HTTPException, Query, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, Response
 
 from clipper import youtube as yt
 from clipper.captions import STYLES
@@ -110,6 +110,11 @@ def create_app(root=None, webui_dir=None):
     @app.delete("/api/jobs/{jid}", status_code=204)
     def delete_job(jid: str):
         store.delete(jid)
+
+    @app.get("/api/jobs/{jid}/frame")
+    def source_frame(jid: str, t: float = Query(..., ge=0), w: int = Query(360, ge=60, le=720)):
+        return Response(store.frame_jpeg(jid, t, w), media_type="image/jpeg",
+                        headers={"Cache-Control": "private, max-age=300"})
 
     # ---------- clips ----------
     @app.get("/api/jobs/{jid}/clips/{cid}/video")
