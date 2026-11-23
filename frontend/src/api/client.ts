@@ -1,4 +1,4 @@
-import type { Config, Job, JobSpec, JobSummary } from "./types";
+import type { Config, EditBody, Job, JobSpec, JobSummary, MetaBody, UploadBody } from "./types";
 
 export class ApiError extends Error {
   constructor(public status: number, message: string) {
@@ -41,6 +41,18 @@ export const api = {
   cancelJob: (id: string) => request<void>(`/api/jobs/${id}/cancel`, json("POST")),
   deleteJob: (id: string) => request<void>(`/api/jobs/${id}`, json("DELETE")),
   signOut: (account: string) => request<void>(`/api/accounts/${encodeURIComponent(account)}/sign-out`, json("POST")),
+  editClip: (jid: string, cid: string, body: EditBody) =>
+    request<{ started: boolean }>(`/api/jobs/${jid}/clips/${cid}/edit`, json("POST", body)),
+  captionText: (jid: string, cid: string) =>
+    request<{ text: string; count: number }>(`/api/jobs/${jid}/clips/${cid}/caption-text`),
+  generateMeta: (jid: string, cid: string, model?: string) =>
+    request<MetaBody>(`/api/jobs/${jid}/clips/${cid}/metadata`, json("POST", model ? { model } : {})),
+  saveMeta: (jid: string, cid: string, body: MetaBody) =>
+    request<MetaBody>(`/api/jobs/${jid}/clips/${cid}/metadata`, json("PUT", body)),
+  uploadClip: (jid: string, cid: string, body: UploadBody) =>
+    request<{ started: boolean }>(`/api/jobs/${jid}/clips/${cid}/upload`, json("POST", body)),
+  previewUrl: (jobId: string, clipId: string, rev: number) => `/api/jobs/${jobId}/clips/${clipId}/preview?v=${rev}`,
+  frameUrl: (jobId: string, t: number, w = 360) => `/api/jobs/${jobId}/frame?t=${t.toFixed(2)}&w=${w}`,
   videoUrl: (jobId: string, clipId: string, rev = 1) => `/api/jobs/${jobId}/clips/${clipId}/video?v=${rev}`,
   downloadUrl: (jobId: string, clipId: string) => `/api/jobs/${jobId}/clips/${clipId}/download`,
 };

@@ -51,3 +51,11 @@ export function renderApp(ui: ReactElement, route = "/") {
     </QueryClientProvider>,
   );
 }
+
+import type { Clip, Job } from "../api/types";
+/** A copy of the job with the first clip changed. */
+export function withClip(job: unknown, patch: Partial<Clip>, index = 0): Job {
+  const j = structuredClone(job) as Job;
+  j.clips[index] = { ...j.clips[index], ...patch };
+  return j;
+}

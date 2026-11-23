@@ -65,7 +65,11 @@ def main():
     port = int(os.environ.get("DEMO_PORT", "8010"))
     root = os.environ.get("CLIPPER_DATA_DIR", str(ROOT / "output_demo"))
     sample_video()
-    env = {"GEMINI_API_KEY": "demo-key", "YT_ACCOUNTS": "main,second", "CLIPPER_DATA_DIR": root}
+    Path(root).mkdir(parents=True, exist_ok=True)
+    fake_secret = Path(root) / "demo_client_secret.json"  # so the YouTube screens look "set up"; uploads are fake
+    fake_secret.write_text("{}")
+    env = {"GEMINI_API_KEY": "demo-key", "YT_ACCOUNTS": "main,second", "CLIPPER_DATA_DIR": root,
+           "YT_CLIENT_SECRET_FILE": str(fake_secret)}
     with mock.patch.dict(os.environ, env), mock.patch("clipper.pipeline.download", fake_download), \
             mock.patch("clipper.transcribe.transcribe", fake_transcribe), mock.patch("clipper.pipeline.pick_clips", fake_pick), \
             mock.patch("server.jobs.generate_metadata", lambda t, model=None: {

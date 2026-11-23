@@ -111,7 +111,7 @@ The Streamlit page (`streamlit run app.py`) still works unchanged while the Reac
 1. Start the server: `py -3.11 -m server`
 2. Open http://127.0.0.1:8000
 
-The finished site is in `webui/` (committed), so you do not need Node.js just to use it. Screens: **New clips** (paste a link / upload / local path, then clip count and length, framing, quality, captions), **live progress** (download speed and time left, transcription position, which clip is rendering, cancel), **Library** (every job, saved on this computer) and **Settings** (Gemini key, YouTube accounts). Clip editing and YouTube upload screens come in the next stages; until then the Streamlit page (`streamlit run app.py`) still has them.
+The finished site is in `webui/` (committed), so you do not need Node.js just to use it. Screens: **New clips** (paste a link / upload / local path, then clip count and length, framing, quality, captions), **live progress** (download speed and time left, transcription position, which clip is rendering, cancel), **Library** (every job, saved on this computer) and **Settings** (Gemini key, YouTube accounts). Under each finished clip: **Edit** (trim with start/end frames from the source video, framing, captions on/off and style, fix caption spelling, fast preview, save) and **YouTube** (AI or hand-written title, description, hashtags and tags; account, visibility, made-for-kids; upload now or schedule), plus **Schedule all** (one clip every N days). The Streamlit page (`streamlit run app.py`) still works until it is removed in the last stage.
 
 Look around without waiting for real processing: `py -3.11 scripts/demo_server.py` (fake download, Whisper, Gemini and YouTube; real FFmpeg), then open http://127.0.0.1:8010.
 
