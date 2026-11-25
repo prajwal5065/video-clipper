@@ -1,4 +1,5 @@
 """Cut a segment, frame it as 9:16, burn captions, encode with FFmpeg."""
+import os
 import re
 import subprocess
 from pathlib import Path
@@ -75,6 +76,9 @@ def render_clip(video, clip, segments, out_dir, index, captions=True, crop="face
     start, end = float(clip["start"]), float(clip["end"])
     name = f"{index:02d}-{_slug(clip.get('title', 'clip'))}"
     out_file = out_dir / (out_name or f"{name}.mp4")
+    # FFmpeg writes to a temp file; it replaces out_file only when it succeeds, so a failed or cancelled
+    # render never destroys the clip that is already there.
+    tmp_file = out_dir / f"{out_file.stem}.part.mp4"
 
     frac = face_center(video, start, end) if crop == "face" else None
     q = QUALITY.get(quality, QUALITY["standard"])
@@ -97,7 +101,7 @@ def render_clip(video, clip, segments, out_dir, index, captions=True, crop="face
         "-c:v", "libx264", "-preset", "ultrafast" if preview else q["preset"], "-crf", "30" if preview else str(q["crf"]),
         "-profile:v", "high", "-pix_fmt", "yuv420p",
         "-c:a", "aac", "-b:a", "96k" if preview else q["audio"], "-movflags", "+faststart",
-        out_file.name,
+        tmp_file.name,
     ]
     duration = end - start
     proc = subprocess.Popen(cmd, cwd=out_dir, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
@@ -117,9 +121,16 @@ def render_clip(video, clip, segments, out_dir, index, captions=True, crop="face
     except BaseException:  # e.g. the job was cancelled inside on_progress: do not leave FFmpeg running
         proc.kill()
         proc.wait()
+        tmp_file.unlink(missing_ok=True)
+        if ass_name:
+            (out_dir / ass_name).unlink(missing_ok=True)
         raise
     if proc.wait() != 0:
+        tmp_file.unlink(missing_ok=True)
+        if ass_name:
+            (out_dir / ass_name).unlink(missing_ok=True)
         raise RuntimeError("FFmpeg failed: " + " | ".join(log[-5:]))
+    os.replace(tmp_file, out_file)
     if ass_name:
         (out_dir / ass_name).unlink(missing_ok=True)
     return out_file

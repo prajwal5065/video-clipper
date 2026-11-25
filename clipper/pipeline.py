@@ -56,7 +56,7 @@ def process(spec, out_dir, cache_dir, report):
     duration = video_duration(src)
 
     # 2. transcript (cached per video + Whisper model)
-    cache_file = cache_dir / "transcripts" / f"{src.stem}__{spec['whisper']}.json"
+    cache_file = cache_dir / "transcripts" / f"{src.stem}-{tr.fingerprint(src)}__{spec['whisper']}.json"
     if cache_file.exists():
         segments = tr.load(cache_file)
         report("transcribe", 0.60, "Using the saved transcript")

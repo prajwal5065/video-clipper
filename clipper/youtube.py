@@ -101,7 +101,7 @@ def _service(account="main"):
                     f"OAuth client file '{secret_file}' not found.\n"
                     "Download it from Google Cloud Console → APIs & Services → Credentials → "
                     "your OAuth 2.0 Client (Desktop App) → Download JSON, rename to "
-                    f"'{secret_file}' and put it in the project folder (next to app.py)."
+                    f"'{secret_file}' and put it in the project folder."
                 )
             try:
                 creds = InstalledAppFlow.from_client_secrets_file(
