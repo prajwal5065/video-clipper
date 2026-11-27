@@ -1,10 +1,15 @@
 """Upload a clip to YouTube (Data API v3, OAuth)."""
 import os
 import re
+import threading
 from datetime import timezone
 from pathlib import Path
 
 SCOPES = ["https://www.googleapis.com/auth/youtube.upload"]
+
+# Only one thread at a time looks up or creates a login, so two uploads never open two Google sign-in windows
+# at once, and the second one finds the login the first one just saved.
+_login_lock = threading.Lock()
 
 # 8 MB chunks: reliable on slow/unstable connections
 _CHUNK_SIZE = 8 * 1024 * 1024
@@ -56,12 +61,11 @@ def build_body(meta, privacy=None, made_for_kids=None, category=None, publish_at
     return body
 
 
-def _service(account="main"):
+def _credentials(account):
     from google.auth.exceptions import TransportError
     from google.auth.transport.requests import Request
     from google.oauth2.credentials import Credentials
     from google_auth_oauthlib.flow import InstalledAppFlow
-    from googleapiclient.discovery import build
 
     secret_file = os.environ.get("YT_CLIENT_SECRET_FILE", "client_secret.json")
     # Support both a bare filename (resolved relative to this file's folder) and an absolute path
@@ -101,7 +105,7 @@ def _service(account="main"):
                     f"OAuth client file '{secret_file}' not found.\n"
                     "Download it from Google Cloud Console → APIs & Services → Credentials → "
                     "your OAuth 2.0 Client (Desktop App) → Download JSON, rename to "
-                    f"'{secret_file}' and put it in the project folder (next to app.py)."
+                    f"'{secret_file}' and put it in the project folder."
                 )
             try:
                 creds = InstalledAppFlow.from_client_secrets_file(
@@ -114,7 +118,14 @@ def _service(account="main"):
                 ) from exc
 
         token.write_text(creds.to_json())
+    return creds
 
+
+def _service(account="main"):
+    from googleapiclient.discovery import build
+
+    with _login_lock:
+        creds = _credentials(account)
     try:
         return build("youtube", "v3", credentials=creds)
     except Exception as exc:

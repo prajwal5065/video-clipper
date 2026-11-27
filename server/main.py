@@ -8,6 +8,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 from fastapi import FastAPI, File, HTTPException, Query, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import FileResponse, JSONResponse, Response
 
 from clipper import youtube as yt
@@ -39,6 +40,10 @@ def create_app(root=None, webui_dir=None):
     store = JobStore(root or os.environ.get("CLIPPER_DATA_DIR", "output"))
     app = FastAPI(title="Video Clipper API", docs_url="/api/docs", openapi_url="/api/openapi.json")
     app.state.store = store
+    # The app can upload to your YouTube channel, so it only answers requests addressed to this computer.
+    # (A web page cannot make a browser send another Host header, which is what DNS-rebinding attacks need.)
+    # "testserver" is the host name FastAPI's test client uses.
+    app.add_middleware(TrustedHostMiddleware, allowed_hosts=["127.0.0.1", "localhost", "testserver"])
     app.add_middleware(CORSMiddleware, allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
                        allow_methods=["*"], allow_headers=["*"])
 
