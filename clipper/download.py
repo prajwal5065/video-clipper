@@ -1,4 +1,5 @@
 """Download a video from a link (YouTube and many other sites) with yt-dlp."""
+import json
 from pathlib import Path
 
 
@@ -36,6 +37,40 @@ def describe(info):
     if info.get("eta") is not None:
         parts.append(f"about {human_time(info['eta'])} left")
     return head, " · ".join(parts)
+
+
+def info_path(video_path):
+    return Path(video_path).with_suffix(".info.json")
+
+
+def save_source_info(video_path, info, url=""):
+    """Keep who/what the downloaded video is (channel, title, chapters...) next to the file, so titles and
+    descriptions can name the original creator. Never fails the download."""
+    try:
+        chapters = [{"title": c.get("title", ""), "start": c.get("start_time"), "end": c.get("end_time")}
+                    for c in (info.get("chapters") or [])[:60]]
+        keep = {
+            "title": info.get("title") or "",
+            "channel": info.get("channel") or info.get("uploader") or "",
+            "channel_url": info.get("channel_url") or info.get("uploader_url") or "",
+            "url": info.get("webpage_url") or url or "",
+            "description": (info.get("description") or "")[:1500],
+            "upload_date": info.get("upload_date") or "",
+            "tags": [str(t) for t in (info.get("tags") or [])[:15]],
+            "chapters": chapters,
+        }
+        info_path(video_path).write_text(json.dumps(keep, ensure_ascii=False), encoding="utf-8")
+    except Exception:
+        pass
+
+
+def read_source_info(video_path):
+    """The saved info of a downloaded video, or {} (uploads and local files have none)."""
+    try:
+        data = json.loads(info_path(video_path).read_text(encoding="utf-8"))
+        return data if isinstance(data, dict) else {}
+    except Exception:
+        return {}
 
 
 def download(url, out_dir, max_height=1080, on_progress=None):
@@ -97,4 +132,5 @@ def download(url, out_dir, max_height=1080, on_progress=None):
     path = Path(path)
     if not path.exists():
         raise FileNotFoundError("Download finished but the video file was not found.")
+    save_source_info(path, info, url)
     return path

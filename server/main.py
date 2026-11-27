@@ -141,7 +141,7 @@ def create_app(root=None, webui_dir=None):
 
     @app.post("/api/jobs/{jid}/clips/{cid}/metadata")
     def generate_meta(jid: str, cid: str, body: GenerateMetaBody | None = None):
-        return store.make_meta(jid, cid, body.model if body else None)
+        return store.make_meta(jid, cid, body.model if body else None, body.context if body else None)
 
     @app.put("/api/jobs/{jid}/clips/{cid}/metadata")
     def save_meta(jid: str, cid: str, body: MetaBody):

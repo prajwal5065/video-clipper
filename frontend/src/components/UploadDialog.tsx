@@ -22,6 +22,8 @@ export function UploadDialog({ job, clip, onClose }: { job: Job; clip: Clip; onC
   const [description, setDescription] = useState(clip.meta?.description ?? "");
   const [hashtags, setHashtags] = useState((clip.meta?.hashtags ?? []).join(", "));
   const [tags, setTags] = useState((clip.meta?.tags ?? []).join(", "));
+  const ctxKey = `vc.ctx.${job.id}`;
+  const [context, setContext] = useState(() => { try { return localStorage.getItem(ctxKey) ?? ""; } catch { return ""; } });
   const [account, setAccount] = useState("");
   const [privacy, setPrivacy] = useState<Privacy | null>(null);
   const [kids, setKids] = useState<boolean | null>(null);
@@ -35,7 +37,10 @@ export function UploadDialog({ job, clip, onClose }: { job: Job; clip: Clip; onC
   useEffect(() => { if (clip.meta) fill(clip.meta); }, [clip.meta?.title, clip.meta?.description]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const generate = useMutation({
-    mutationFn: () => api.generateMeta(job.id, clip.id, config?.defaults.gemini_model),
+    mutationFn: () => {
+      try { localStorage.setItem(ctxKey, context); } catch { /* private mode */ }
+      return api.generateMeta(job.id, clip.id, config?.defaults.gemini_model, context.trim());
+    },
     onSuccess: (m) => { fill(m); void refresh(); },
   });
 
@@ -103,6 +108,11 @@ export function UploadDialog({ job, clip, onClose }: { job: Job; clip: Clip; onC
             <Sparkles className="size-4" aria-hidden /> {clip.meta || title ? "Rewrite with AI" : "Write with AI"}
           </Button>
         </div>
+        <Field label="About this video (optional)" htmlFor="yt-context"
+          hint={"Who is in it, or whose video it reacts to, so the AI can use the name in the title and description. For example: Reacting to Ali Abdaal's video on studying. Videos from a link already include the source channel."}>
+          <textarea id="yt-context" rows={2} value={context} className={textarea} placeholder="Optional"
+            onChange={(e) => setContext(e.target.value)} />
+        </Field>
         <Field label="Title" htmlFor="yt-title" right={<span className={title.length > 100 ? "text-bad" : "text-muted"}>{title.length}/100</span>}>
           <TextInput id="yt-title" value={title} maxLength={100} placeholder="Leave empty and AI writes it when you upload" onChange={(e) => setTitle(e.target.value)} />
         </Field>

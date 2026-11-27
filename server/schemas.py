@@ -63,6 +63,7 @@ class MetaBody(BaseModel):
 
 class GenerateMetaBody(BaseModel):
     model: Optional[str] = None
+    context: Optional[str] = Field(None, max_length=1000)  # e.g. "Reacting to <creator>'s new video"
 
 
 class UploadBody(BaseModel):
