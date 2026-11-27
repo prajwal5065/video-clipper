@@ -2,7 +2,6 @@ faster-whisper>=1.0.3
 google-genai>=1.0.0
 python-dotenv>=1.0.0
 opencv-python-headless>=4.8,<5
-streamlit>=1.35
 yt-dlp
 google-api-python-client
 google-auth-oauthlib
