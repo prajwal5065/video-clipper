@@ -128,9 +128,14 @@ def edit_panel(idx, c, job):
 yt_accounts = accounts()
 with st.sidebar:
     st.header("Settings")
-    n_clips = st.slider("Number of clips", 1, 10, 5)
+    n_clips = st.slider("Number of clips", 1, 20, 5)
     min_len, max_len = st.slider("Clip length (seconds)", 10, 90, (20, 60))
-    whisper = st.selectbox("Whisper model", ["tiny", "base", "small", "medium", "large-v3"], index=2)
+    whisper = st.selectbox(
+        "Whisper model",
+        ["tiny", "base", "small", "medium", "large-v3"],
+        index=1,
+        help="Use 'tiny' or 'base' on CPU for fast transcription (recommended for 1-2h videos). 'small' and above are much slower on CPU."
+    )
     device = st.selectbox("Device", ["auto", "cpu", "cuda"])
     compute = st.selectbox("Compute type", ["int8", "float16"], help="int8 for CPU, float16 for NVIDIA GPU")
     crop = FRAMING_LABELS[st.selectbox("Framing", list(FRAMING_LABELS), help="Crop fills the screen but cuts off the sides. "

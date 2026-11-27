@@ -39,12 +39,15 @@ def _wav_seconds(path):
         return w.getnframes() / w.getframerate()
 
 
-def transcribe(video_path, model_size="small", device="auto", compute_type="int8", chunk_seconds=600,
+def transcribe(video_path, model_size="base", device="auto", compute_type="int8", chunk_seconds=120,
                on_progress=None):
     """on_progress(done_seconds, total_seconds) is called as audio gets transcribed."""
+    import os
     from faster_whisper import WhisperModel  # imported lazily: heavy
 
-    model = WhisperModel(model_size, device=device, compute_type=compute_type)
+    # Limit CPU threads to avoid Intel MKL memory allocation errors (mkl_malloc) on CPU
+    cpu_threads = min(4, os.cpu_count() or 4) if device in ("auto", "cpu") else 0
+    model = WhisperModel(model_size, device=device, compute_type=compute_type, cpu_threads=cpu_threads)
     segments, offset = [], 0.0
     with tempfile.TemporaryDirectory() as tmp:
         chunks = _split_audio(video_path, tmp, chunk_seconds)
@@ -53,7 +56,17 @@ def transcribe(video_path, model_size="small", device="auto", compute_type="int8
         if on_progress:
             on_progress(0.0, total)
         for chunk, dur in zip(chunks, durations):
-            raw, _info = model.transcribe(str(chunk), word_timestamps=True, vad_filter=True)
+            # beam_size=1 (greedy search) is 3-4x faster than beam_size=5 on CPU,
+            # prevents mkl_malloc out-of-memory errors, and condition_on_previous_text=False
+            # prevents hallucination loops on long videos.
+            raw, _info = model.transcribe(
+                str(chunk),
+                beam_size=1,
+                best_of=1,
+                word_timestamps=True,
+                vad_filter=True,
+                condition_on_previous_text=False
+            )
             for s in raw:
                 words = [Word(w.start + offset, w.end + offset, w.word.strip())
                          for w in (s.words or []) if w.word.strip()]

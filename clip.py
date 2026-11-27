@@ -24,7 +24,7 @@ def main():
     p.add_argument("--min", type=int, default=20, dest="min_len", help="min clip seconds")
     p.add_argument("--max", type=int, default=60, dest="max_len", help="max clip seconds")
     p.add_argument("--model", default=None, help="Gemini model (e.g. gemini-2.5-flash, gemini-3.8-flash)")
-    p.add_argument("--whisper", default="small", help="tiny/base/small/medium/large-v3")
+    p.add_argument("--whisper", default="base", help="tiny/base/small/medium/large-v3 (base recommended for CPU)")
     p.add_argument("--device", default="auto", help="auto/cpu/cuda")
     p.add_argument("--compute-type", default="int8", help="int8 (CPU) or float16 (GPU)")
     p.add_argument("--out", default="output")
