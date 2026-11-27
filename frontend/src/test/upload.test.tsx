@@ -56,6 +56,15 @@ describe("YouTube upload panel", () => {
     expect(within(dialog).getByRole("button", { name: /rewrite with ai/i })).toBeInTheDocument();
   });
 
+  it("sends your notes about the video when writing with AI", async () => {
+    const t = setup();
+    const dialog = await openUpload();
+    await userEvent.type(within(dialog).getByLabelText("About this video (optional)"), "Reacting to a big channel's video");
+    await userEvent.click(within(dialog).getByRole("button", { name: /write with ai/i }));
+    await waitFor(() => expect(posts(t.calls, "/metadata")).toHaveLength(1));
+    expect(posts(t.calls, "/metadata")[0].body).toMatchObject({ context: "Reacting to a big channel's video" });
+  });
+
   it("saves your edits, then uploads with the chosen account and visibility", async () => {
     const t = setup();
     const dialog = await openUpload();

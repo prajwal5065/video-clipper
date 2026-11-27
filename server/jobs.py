@@ -15,6 +15,7 @@ from pathlib import Path
 from clipper import pipeline
 from clipper import transcribe as tr
 from clipper import youtube as yt
+from clipper.download import read_source_info
 from clipper.metadata import generate_metadata, normalize, transcript_for
 from clipper.render import clip_words, render_clip
 
@@ -282,10 +283,27 @@ class JobStore:
             self._persist(self.get(jid), force=True)
 
     # ---------- YouTube metadata and upload ----------
-    def make_meta(self, jid, cid, model=None):
-        clip = self._clip(self.get(jid), cid)
+    def make_meta(self, jid, cid, model=None, context=None):
+        """Write title/description/tags from the transcript AND what is known about the source video (channel,
+        title, chapter) AND the publisher's notes. Notes given once are kept for the other clips of this job."""
+        job = self.get(jid)
+        clip = self._clip(job, cid)
+        notes_file = self.job_dir(jid) / "meta_context.txt"
+        if context is not None:
+            try:
+                if context.strip():
+                    notes_file.write_text(context.strip(), encoding="utf-8")
+                else:
+                    notes_file.unlink(missing_ok=True)
+            except OSError:
+                pass
+        else:
+            context = notes_file.read_text(encoding="utf-8") if notes_file.exists() else ""
+        src = (job.get("source") or {}).get("path")
+        hint = {"title": clip.get("title"), "reason": clip.get("reason"), "start": clip.get("start"), "end": clip.get("end")}
         try:
-            meta = generate_metadata(clip.get("transcript", ""), model=model)
+            meta = generate_metadata(clip.get("transcript", ""), model=model, source=read_source_info(src) if src else {},
+                                     context=context, hint=hint)
         except Exception as e:
             raise ApiError(502, friendly(e))
         self.update_clip(jid, cid, force=True, meta=meta)
