@@ -2,6 +2,7 @@
 import gc
 import hashlib
 import json
+import os
 import subprocess
 import tempfile
 import wave
@@ -32,6 +33,22 @@ def fingerprint(video_path):
     return hashlib.sha1(f"{p.resolve()}|{st.st_size}|{st.st_mtime_ns}".encode("utf-8")).hexdigest()[:10]
 
 
+def _threads():
+    """CPU threads for Whisper. faster-whisper uses only 4 unless told otherwise, which leaves most of a modern
+    CPU idle. WHISPER_THREADS overrides."""
+    env = os.environ.get("WHISPER_THREADS", "").strip()
+    if env.isdigit() and int(env) > 0:
+        return int(env)
+    return max(4, min(os.cpu_count() or 4, 8))
+
+
+def _beam():
+    """Beam size 1 (greedy) is clearly faster than faster-whisper's default of 5, with very little loss in
+    accuracy. WHISPER_BEAM_SIZE overrides (for example 5 for the most careful transcript)."""
+    env = os.environ.get("WHISPER_BEAM_SIZE", "").strip()
+    return int(env) if env.isdigit() and int(env) > 0 else 1
+
+
 def _split_audio(video_path, out_dir, chunk_seconds):
     """Extract mono 16 kHz audio and cut it into chunks so Whisper never holds the whole video in RAM."""
     pattern = str(Path(out_dir) / "chunk%04d.wav")
@@ -53,7 +70,10 @@ def transcribe(video_path, model_size="small", device="auto", compute_type="int8
     """on_progress(done_seconds, total_seconds) is called as audio gets transcribed."""
     from faster_whisper import WhisperModel  # imported lazily: heavy
 
-    model = WhisperModel(model_size, device=device, compute_type=compute_type)
+    threads, beam = _threads(), _beam()
+    model = WhisperModel(model_size, device=device, compute_type=compute_type, cpu_threads=threads)
+    used = getattr(getattr(model, "model", None), "device", device)
+    print(f"[speed] Whisper '{model_size}' on {used} ({compute_type}), {threads} CPU threads, beam {beam}", flush=True)
     segments, offset = [], 0.0
     with tempfile.TemporaryDirectory() as tmp:
         chunks = _split_audio(video_path, tmp, chunk_seconds)
@@ -62,7 +82,7 @@ def transcribe(video_path, model_size="small", device="auto", compute_type="int8
         if on_progress:
             on_progress(0.0, total)
         for chunk, dur in zip(chunks, durations):
-            raw, _info = model.transcribe(str(chunk), word_timestamps=True, vad_filter=True)
+            raw, _info = model.transcribe(str(chunk), word_timestamps=True, vad_filter=True, beam_size=beam)
             for s in raw:
                 words = [Word(w.start + offset, w.end + offset, w.word.strip())
                          for w in (s.words or []) if w.word.strip()]

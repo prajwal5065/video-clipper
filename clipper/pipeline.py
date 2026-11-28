@@ -1,5 +1,6 @@
 """The whole clipping pipeline in one place, for any front end:
 download -> transcribe -> pick moments -> render clips."""
+import time
 from pathlib import Path
 
 from . import transcribe as tr
@@ -18,6 +19,11 @@ def mmss(seconds):
     return f"{seconds // 60}:{seconds % 60:02d}"
 
 
+def _took(seconds):
+    seconds = int(round(seconds))
+    return f"{seconds // 60}m{seconds % 60:02d}s" if seconds >= 60 else f"{seconds}s"
+
+
 def process(spec, out_dir, cache_dir, report):
     """Run the pipeline.
 
@@ -32,6 +38,12 @@ def process(spec, out_dir, cache_dir, report):
     clips_dir = out_dir / "clips"
     clips_dir.mkdir(parents=True, exist_ok=True)
     quality = spec["quality"]
+    clock = {"start": time.monotonic(), "last": time.monotonic()}
+    times = {}
+
+    def lap(name):  # how long the stage that just ended took
+        now = time.monotonic()
+        times[name], clock["last"] = now - clock["last"], now
 
     # 1. the source video
     if spec["source_type"] == "link":
@@ -54,10 +66,12 @@ def process(spec, out_dir, cache_dir, report):
         src = Path(spec["source"])
         report("download", 0.10, "Using the local file")
     duration = video_duration(src)
+    lap("download" if spec["source_type"] == "link" else "open")
 
     # 2. transcript (cached per video + Whisper model)
     cache_file = cache_dir / "transcripts" / f"{src.stem}-{tr.fingerprint(src)}__{spec['whisper']}.json"
-    if cache_file.exists():
+    transcript_cached = cache_file.exists()
+    if transcript_cached:
         segments = tr.load(cache_file)
         report("transcribe", 0.60, "Using the saved transcript")
     else:
@@ -76,10 +90,12 @@ def process(spec, out_dir, cache_dir, report):
         raise ValueError("No speech found in this video.")
     transcript_file = out_dir / "transcript.json"
     tr.save(segments, transcript_file)
+    lap("transcribe (saved)" if transcript_cached else "transcribe")
 
     # 3. best moments
     report("select", 0.62, "Asking Gemini for the best moments")
     picked = pick_clips(segments, spec["clips"], spec["min_len"], spec["max_len"], model=spec.get("model"))
+    lap("select")
 
     # 4. render
     clips = []
@@ -98,5 +114,8 @@ def process(spec, out_dir, cache_dir, report):
             "transcript": transcript_for(segments, c["start"], c["end"]),
             "rev": 1, "meta": None, "yt": None, "edit": None, "preview": None,
         })
+    lap("render")
+    print("[timing] " + " | ".join(f"{k} {_took(v)}" for k, v in times.items())
+          + f" | {len(clips)} clips | total {_took(time.monotonic() - clock['start'])}", flush=True)
     return {"source": src, "duration": duration, "segments": segments, "clips": clips,
             "transcript_file": transcript_file}
