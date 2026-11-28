@@ -72,7 +72,7 @@ def main():
            "YT_CLIENT_SECRET_FILE": str(fake_secret)}
     with mock.patch.dict(os.environ, env), mock.patch("clipper.pipeline.download", fake_download), \
             mock.patch("clipper.transcribe.transcribe", fake_transcribe), mock.patch("clipper.pipeline.pick_clips", fake_pick), \
-            mock.patch("server.jobs.generate_metadata", lambda t, model=None: {
+            mock.patch("server.jobs.generate_metadata", lambda t, model=None, **kw: {
                 "title": "Demo title", "description": "Demo description\n\n#Shorts", "hashtags": ["Shorts"], "tags": ["demo"]}), \
             mock.patch("clipper.youtube.upload", lambda path, meta, **k: (time.sleep(DELAY * 2), "https://youtu.be/demo")[1]):
         from server.main import create_app

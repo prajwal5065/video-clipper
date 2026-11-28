@@ -74,7 +74,7 @@ def main():
     seen = {}
     with mock.patch("clipper.transcribe.transcribe", transcribe), mock.patch("clipper.pipeline.pick_clips", pick), \
             mock.patch("clipper.pipeline.download", download), \
-            mock.patch("server.jobs.generate_metadata", lambda t, model=None: {
+            mock.patch("server.jobs.generate_metadata", lambda t, model=None, **kw: {
                 "title": "The one thing nobody tells you about growing fast", "description": "Most creators miss this.\n\n#Shorts #growth",
                 "hashtags": ["Shorts", "growth"], "tags": ["youtube growth", "creator tips"]}), \
             mock.patch("clipper.youtube.upload", lambda path, meta, **k: (time.sleep(0.8), "https://youtu.be/abc123")[1]), \

@@ -1,5 +1,6 @@
 """Local speech-to-text with word-level timestamps (faster-whisper)."""
 import gc
+import hashlib
 import json
 import subprocess
 import tempfile
@@ -21,6 +22,14 @@ class Segment:
     end: float
     text: str
     words: list
+
+
+def fingerprint(video_path):
+    """Short id of one particular video file (path + size + modified time), so a cached transcript is only
+    reused for the same file, not for another file that happens to have the same name."""
+    p = Path(video_path)
+    st = p.stat()
+    return hashlib.sha1(f"{p.resolve()}|{st.st_size}|{st.st_mtime_ns}".encode("utf-8")).hexdigest()[:10]
 
 
 def _split_audio(video_path, out_dir, chunk_seconds):

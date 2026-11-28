@@ -56,6 +56,15 @@ describe("YouTube upload panel", () => {
     expect(within(dialog).getByRole("button", { name: /rewrite with ai/i })).toBeInTheDocument();
   });
 
+  it("sends your notes about the video when writing with AI", async () => {
+    const t = setup();
+    const dialog = await openUpload();
+    await userEvent.type(within(dialog).getByLabelText("About this video (optional)"), "Reacting to a big channel's video");
+    await userEvent.click(within(dialog).getByRole("button", { name: /write with ai/i }));
+    await waitFor(() => expect(posts(t.calls, "/metadata")).toHaveLength(1));
+    expect(posts(t.calls, "/metadata")[0].body).toMatchObject({ context: "Reacting to a big channel's video" });
+  });
+
   it("saves your edits, then uploads with the chosen account and visibility", async () => {
     const t = setup();
     const dialog = await openUpload();
@@ -157,6 +166,38 @@ describe("Schedule all", () => {
     expect(sent.map((c) => (c.body as { publish_at: string }).publish_at)).toEqual(
       done.clips.map((_, i) => new Date(first + i * 2 * 86_400_000).toISOString()));
     expect(sent.every((c) => (c.body as { account: string }).account === "second")).toBe(true);
+  });
+
+  it("can send the first clips to one account and the rest to another, each with its own schedule", async () => {
+    const { t, dialog } = await open();
+    const n = done.clips.length;
+    fireEvent.change(within(dialog).getByLabelText("First clip is published at"), { target: { value: "2099-06-01T10:00" } });
+    fireEvent.change(within(dialog).getByLabelText("First clips"), { target: { value: "1" } });
+    await userEvent.selectOptions(within(dialog).getByLabelText("The rest go to"), "second");
+    await userEvent.click(within(dialog).getByRole("button", { name: /apply split/i }));
+    expect(within(dialog).getByText(/browser window opens once to sign in to second/i)).toBeInTheDocument();
+    await userEvent.click(within(dialog).getByRole("button", { name: /upload and schedule/i }));
+
+    expect(await within(dialog).findByText("Queued")).toBeInTheDocument();
+    const sent = t.calls.filter((c) => c.method === "POST" && c.url.endsWith("/upload")).map((c) => c.body as { account: string; publish_at: string });
+    expect(sent.map((b) => b.account)).toEqual(done.clips.map((_, i) => (i < 1 ? "main" : "second")));
+    const first = new Date("2099-06-01T10:00").getTime();
+    // "main" has one clip at the first time; "second" starts again at the first time, one day apart
+    expect(sent.map((b) => b.publish_at)).toEqual(
+      done.clips.map((_, i) => new Date(first + Math.max(0, i - 1) * 86_400_000).toISOString()));
+    expect(n).toBeGreaterThan(1);
+  });
+
+  it("lets you pick the account of a single clip", async () => {
+    const { t, dialog } = await open();
+    const rows = within(dialog).getAllByRole("listitem");
+    await userEvent.selectOptions(within(rows[0]).getByRole("combobox"), "second");
+    fireEvent.change(within(dialog).getByLabelText("First clip is published at"), { target: { value: "2099-06-01T10:00" } });
+    await userEvent.click(within(dialog).getByRole("button", { name: /upload and schedule/i }));
+    await within(dialog).findByText("Queued");
+    const sent = t.calls.filter((c) => c.method === "POST" && c.url.endsWith("/upload")).map((c) => (c.body as { account: string }).account);
+    expect(sent[0]).toBe("second");
+    expect(sent.slice(1).every((a) => a === "main")).toBe(true);
   });
 
   it("rejects a first time in the past", async () => {

@@ -27,7 +27,7 @@ def video(tmp_path_factory):
 @pytest.fixture
 def stubs(monkeypatch):
     """Replace Whisper, Gemini, yt-dlp and YouTube with fast fakes (FFmpeg stays real)."""
-    rec = {"upload": [], "meta_models": [], "pick_models": [], "sleep": 0.0}
+    rec = {"upload": [], "meta_models": [], "meta_kw": [], "pick_models": [], "sleep": 0.0}
     words = [tr.Word(i * 0.5, i * 0.5 + 0.4, f"word{i}") for i in range(26)]
     segs = [tr.Segment(0, 13, "all", words)]
 
@@ -45,10 +45,10 @@ def stubs(monkeypatch):
 
     monkeypatch.setattr("clipper.transcribe.transcribe", fake_transcribe)
     monkeypatch.setattr("clipper.pipeline.pick_clips", fake_pick)
-    monkeypatch.setattr("server.jobs.generate_metadata", lambda t, model=None: (
-        rec["meta_models"].append(model),
+    monkeypatch.setattr("server.jobs.generate_metadata", lambda t, model=None, **kw: (
+        rec["meta_models"].append(model), rec["meta_kw"].append(kw),
         {"title": "Generated title", "description": "Generated description\n\n#Shorts", "hashtags": ["Shorts"],
-         "tags": ["tag"]})[1])
+         "tags": ["tag"]})[2])
     monkeypatch.setattr("clipper.youtube.upload", lambda path, meta, **k: (
         rec["upload"].append(k), time.sleep(rec["sleep"]), "https://youtu.be/fake123")[2])
     monkeypatch.setenv("YT_ACCOUNTS", "main,second")

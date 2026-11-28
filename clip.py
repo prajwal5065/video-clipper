@@ -55,14 +55,17 @@ def main():
     out_dir = Path(a.out) / video.stem
     out_dir.mkdir(parents=True, exist_ok=True)
     transcript_file = out_dir / "transcript.json"
+    source_id_file = out_dir / "transcript.source"
+    source_id = tr.fingerprint(video)
 
-    if transcript_file.exists():
+    if transcript_file.exists() and source_id_file.exists() and source_id_file.read_text().strip() == source_id:
         print("Using cached transcript.")
         segments = tr.load(transcript_file)
     else:
         print(f"Transcribing with Whisper '{a.whisper}' (this is the slow step)...")
         segments = tr.transcribe(video, a.whisper, a.device, a.compute_type)
         tr.save(segments, transcript_file)
+        source_id_file.write_text(source_id)
     if not segments:
         sys.exit("No speech found in this video.")
 

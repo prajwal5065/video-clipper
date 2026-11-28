@@ -45,8 +45,9 @@ export const api = {
     request<{ started: boolean }>(`/api/jobs/${jid}/clips/${cid}/edit`, json("POST", body)),
   captionText: (jid: string, cid: string) =>
     request<{ text: string; count: number }>(`/api/jobs/${jid}/clips/${cid}/caption-text`),
-  generateMeta: (jid: string, cid: string, model?: string) =>
-    request<MetaBody>(`/api/jobs/${jid}/clips/${cid}/metadata`, json("POST", model ? { model } : {})),
+  generateMeta: (jid: string, cid: string, model?: string, context?: string) =>
+    request<MetaBody>(`/api/jobs/${jid}/clips/${cid}/metadata`,
+      json("POST", { ...(model ? { model } : {}), ...(context !== undefined ? { context } : {}) })),
   saveMeta: (jid: string, cid: string, body: MetaBody) =>
     request<MetaBody>(`/api/jobs/${jid}/clips/${cid}/metadata`, json("PUT", body)),
   uploadClip: (jid: string, cid: string, body: UploadBody) =>
